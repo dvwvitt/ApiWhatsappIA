@@ -87,38 +87,65 @@ if [ ! -z "$NODE_PROCESSES" ]; then
     sleep 1
 fi
 
-# Verificar puertos
+# Verificar y forzar liberación de puertos (con reintentos)
 echo ""
-echo -e "${BLUE}7. Verificando puertos liberados...${NC}"
+echo -e "${BLUE}7. Forzando liberación de puertos...${NC}"
 
 PORTS="3000 3002 3004 5678"
+ALL_FREE=true
+
+for port in $PORTS; do
+    PIDS=$(lsof -ti:$port 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+        echo -e "${YELLOW}   Puerto $port en uso por PID(s): $PIDS — matando...${NC}"
+        echo "$PIDS" | xargs kill -9 2>/dev/null
+    fi
+done
+
+# Esperar a que el sistema libere los puertos
+sleep 2
+
+# Segunda verificación — si algo sobrevivió, intentar de nuevo
+for port in $PORTS; do
+    PIDS=$(lsof -ti:$port 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+        echo -e "${YELLOW}   Puerto $port sigue ocupado — segundo intento...${NC}"
+        echo "$PIDS" | xargs kill -9 2>/dev/null
+        sleep 1
+    fi
+done
+
+# Estado final de puertos
+echo ""
+echo -e "${BLUE}8. Estado final de puertos:${NC}"
 for port in $PORTS; do
     if lsof -ti:$port > /dev/null 2>&1; then
-        echo -e "${RED}   ❌ Puerto $port aún en uso${NC}"
-        # Forzar liberación
-        lsof -ti:$port | xargs kill -9 2>/dev/null
+        echo -e "   Puerto $port: ${RED}AUN EN USO${NC} (puede necesitar sudo)"
+        ALL_FREE=false
     else
-        echo -e "${GREEN}   ✅ Puerto $port liberado${NC}"
+        echo -e "   Puerto $port: ${GREEN}LIBRE${NC}"
     fi
 done
 
 # Limpiar archivos PID
 echo ""
-echo -e "${BLUE}8. Limpiando archivos temporales...${NC}"
+echo -e "${BLUE}9. Limpiando archivos temporales...${NC}"
 rm -f logs/*.pid 2>/dev/null
 rm -f logs/pids.info 2>/dev/null
 
 echo ""
-echo -e "${GREEN}=========================================${NC}"
-echo -e "${GREEN}✅ TODOS LOS SERVICIOS DETENIDOS${NC}"
-echo -e "${GREEN}=========================================${NC}"
-echo ""
+if [ "$ALL_FREE" = true ]; then
+    echo -e "${GREEN}=========================================${NC}"
+    echo -e "${GREEN}TODOS LOS SERVICIOS DETENIDOS${NC}"
+    echo -e "${GREEN}=========================================${NC}"
+else
+    echo -e "${RED}=========================================${NC}"
+    echo -e "${RED}ALGUNOS PUERTOS SIGUEN OCUPADOS${NC}"
+    echo -e "${RED}=========================================${NC}"
+    echo ""
+    echo -e "${YELLOW}Si un puerto no se libera, ejecuta manualmente:${NC}"
+    echo -e "${YELLOW}   sudo lsof -ti:PUERTO | sudo xargs kill -9${NC}"
+fi
 
-echo -e "${BLUE}📊 Estado final:${NC}"
-echo -e "   Middleware (3000):   $(lsof -ti:3000 > /dev/null && echo -e "${RED}❌ Activo${NC}" || echo -e "${GREEN}✅ Detenido${NC}")"
-echo -e "   Web Server (3002):   $(lsof -ti:3002 > /dev/null && echo -e "${RED}❌ Activo${NC}" || echo -e "${GREEN}✅ Detenido${NC}")"
-echo -e "   API (3004):          $(lsof -ti:3004 > /dev/null && echo -e "${RED}❌ Activo${NC}" || echo -e "${GREEN}✅ Detenido${NC}")"
-echo -e "   Webhook (5678):      $(lsof -ti:5678 > /dev/null && echo -e "${RED}❌ Activo${NC}" || echo -e "${GREEN}✅ Detenido${NC}")"
-
 echo ""
-echo -e "${YELLOW}⚠️  Para reiniciar: ./scripts/start-all.sh${NC}"
+echo -e "${YELLOW}Para reiniciar: ./scripts/start-all.sh${NC}"

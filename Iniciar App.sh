@@ -196,6 +196,17 @@ echo -e "${BLUE}Deteniendo servicios anteriores...${NC}"
 ./scripts/stop-all.sh > /dev/null 2>&1
 sleep 2
 
+# Forzar liberación de puertos
+echo -e "${BLUE}Verificando puertos disponibles...${NC}"
+for port in 3000 3002 3004 5678; do
+    PIDS=$(lsof -ti:$port 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+        echo -e "${YELLOW}  Puerto $port ocupado — liberando...${NC}"
+        echo "$PIDS" | xargs kill -9 2>/dev/null
+    fi
+done
+sleep 2
+
 mkdir -p logs data
 
 # -----------------------------------------------
