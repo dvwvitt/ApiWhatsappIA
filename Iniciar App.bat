@@ -128,9 +128,19 @@ taskkill /f /fi "WINDOWTITLE eq API*"           >nul 2>&1
 taskkill /f /fi "WINDOWTITLE eq WebServer*"     >nul 2>&1
 taskkill /f /fi "WINDOWTITLE eq Ngrok*"         >nul 2>&1
 
-:: Matar procesos node en puertos del proyecto
+:: Matar procesos node en puertos del proyecto (primer intento)
 for %%p in (3000 3002 3004 5678) do (
     for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":%%p "') do (
+        taskkill /f /pid %%a >nul 2>&1
+    )
+)
+timeout /t 3 /nobreak >nul
+
+:: Segundo intento — verificar que realmente se liberaron
+echo Verificando puertos disponibles...
+for %%p in (3000 3002 3004 5678) do (
+    for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":%%p "') do (
+        echo   Puerto %%p aun en uso por PID %%a — forzando...
         taskkill /f /pid %%a >nul 2>&1
     )
 )

@@ -47,8 +47,35 @@ echo ""
 
 # Detener servicios previos si existen
 echo -e "${BLUE}🛑 Deteniendo servicios previos...${NC}"
-./scripts/stop-all.sh
+./scripts/stop-all.sh 2>/dev/null
 sleep 2
+
+# Forzar liberación de puertos antes de iniciar
+echo -e "${BLUE}🔓 Verificando puertos disponibles...${NC}"
+PORTS="3000 3002 3004 5678"
+BLOCKED=false
+for port in $PORTS; do
+    PIDS=$(lsof -ti:$port 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+        echo -e "${YELLOW}   Puerto $port ocupado por PID(s): $PIDS — liberando...${NC}"
+        echo "$PIDS" | xargs kill -9 2>/dev/null
+        BLOCKED=true
+    fi
+done
+
+if [ "$BLOCKED" = true ]; then
+    echo -e "${YELLOW}   Esperando liberación de puertos...${NC}"
+    sleep 3
+    # Verificar que realmente se liberaron
+    for port in $PORTS; do
+        if lsof -ti:$port > /dev/null 2>&1; then
+            echo -e "${RED}   ❌ Puerto $port no se pudo liberar. Abortando.${NC}"
+            echo -e "${YELLOW}   Ejecuta: sudo lsof -ti:$port | sudo xargs kill -9${NC}"
+            exit 1
+        fi
+    done
+fi
+echo -e "${GREEN}✅ Todos los puertos disponibles${NC}"
 
 echo ""
 echo -e "${BLUE}🚀 Iniciando servicios...${NC}"
