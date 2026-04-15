@@ -1,0 +1,66 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "explorer.compactFolders": false,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "*.js": "${capture}.js.map, ${capture}.min.js, ${capture}.d.ts",
+    "*.ts": "${capture}.js, ${capture}.js.map, ${capture}.min.js, ${capture}.d.ts",
+    "package.json": "package-lock.json, yarn.lock, .npmrc",
+    ".env": ".env.example, .env.local, .env.development",
+    "README.md": "CONTRIBUTING.md, CHANGELOG.md, LICENSE"
+  },
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "workbench.editor.enablePreview": false,
+  "workbench.startupEditor": "none",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "node_modules": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/logs": true,
+    "**/dist": true
+  },
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact",
+    "html": "html"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "todo-tree.general.tags": [
+    "TODO",
+    "FIXME",
+    "BUG",
+    "HACK",
+    "NOTE",
+    "OPTIMIZE"
+  ],
+  "todo-tree.highlights.defaultHighlight": {
+    "icon": "checklist",
+    "foreground": "#ffffff",
+    "background": "#ff6b6b",
+    "iconColour": "#ff6b6b"
+  }
+}

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control WhatsApp - Relojería Milla de Oro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; padding: 20px; }
+        .card { margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .message-item { border-left: 4px solid #0d6efd; padding: 10px; margin-bottom: 10px; background: white; }
+        .intent-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 5px; }
+        .intent-saludo { background: #28a745; color: white; }
+        .intent-bateria { background: #ffc107; color: black; }
+        .intent-no_identificado { background: #dc3545; color: white; }
+        .response-card { border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 10px; }
+        .response-card.active { border-color: #28a745; background: rgba(40, 167, 69, 0.05); }
+        .nav-tabs .nav-link.active { font-weight: bold; border-bottom: 3px solid #0d6efd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">📱 Control WhatsApp Business</h1>
+        <p class="text-muted">Relojería Milla de Oro - +573123080083</p>
+        
+        <ul class="nav nav-tabs mb-4" id="myTab">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#dashboard">Dashboard</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#messages">Mensajes</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#responses">Respuestas</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#test">Probar</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content">
+            <!-- Dashboard -->
+            <div class="tab-pane fade show active" id="dashboard">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h2 id="total-messages">0</h2>
+                                <p class="text-muted">Mensajes Totales</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h2 id="today-messages">0</h2>
+                                <p class="text-muted">Mensajes Hoy</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h2 id="active-responses">0</h2>
+                                <p class="text-muted">Respuestas Activas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h2 id="response-rate">0%</h2>
+                                <p class="text-muted">Tasa Respuesta</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5>📨 Mensajes Recientes</h5>
+                    </div>
+                    <div class="card-body" id="recent-messages">
+                        Cargando...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mensajes -->
+            <div class="tab-pane fade" id="messages">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between">
+                        <h5>Historial de Mensajes</h5>
+                        <div>
+                            <input type="text" class="form-control form-control-sm" id="search-messages" placeholder="Buscar...">
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="messages-list">
+                            Cargando...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Respuestas -->
+            <div class="tab-pane fade" id="responses">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Control de Respuestas Automáticas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="responses-list">
+                            Cargando...
+                        </div>
+                        
+                        <button class="btn btn-primary mt-3" onclick="editResponse(0)">
+                            + Agregar Nueva Respuesta
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Probar -->
+            <div class="tab-pane fade" id="test">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🧪 Probar Respuestas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Escribe un mensaje para probar:</label>
+                            <textarea class="form-control" id="test-message" rows="3" placeholder="Ej: Hola, necesito cambiar la batería de mi reloj"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="testResponse()">Probar Respuesta</button>
+                        
+                        <div class="mt-4" id="test-result">
+                            <!-- Resultado aparecerá aquí -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para editar respuesta -->
+    <div class="modal fade" id="responseModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Respuesta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="response-form">
+                        <input type="hidden" id="response-id">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="response-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Intención</label>
+                            <select class="form-control" id="response-intent">
+                                <option value="saludo">Saludo</option>
+                                <option value="bateria">Batería</option>
+                                <option value="consulta_estado">Consulta Estado</option>
+                                <option value="consulta_precio">Consulta Precio</option>
+                                <option value="no_identificado">No Identificado</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Palabras clave (separadas por coma)</label>
+                            <input type="text" class="form-control" id="response-triggers" placeholder="hola,buenos,buenas">
+                            <small class="text-muted">El mensaje debe contener alguna de estas palabras</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Texto de respuesta</label>
+                            <textarea class="form-control" id="response-text" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="response-active" checked>
+                            <label class="form-check-label">Activa</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Prioridad (1 = más alta)</label>
+                            <input type="number" class="form-control" id="response-priority" value="1" min="1" max="10">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveResponse()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboard();
+            loadMessages();
+            loadResponses();
+            
+            // Actualizar cada 30 segundos
+            setInterval(loadDashboard, 30000);
+            setInterval(loadMessages, 30000);
+        });
+        
+        // Cargar dashboard
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                document.getElementById('total-messages').textContent = data.total_messages || 0;
+                document.getElementById('today-messages').textContent = data.today_messages || 0;
+                document.getElementById('active-responses').textContent = data.active_responses || 0;
+                
+                // Calcular tasa de respuesta
+                const totalWithResponse = data.total_messages > 0 ? 
+                    Math.round((data.today_messages / data.total_messages) * 100) : 0;
+                document.getElementById('response-rate').textContent = totalWithResponse + '%';
+                
+                // Cargar mensajes recientes
+                loadRecentMessages();
+                
+            } catch (error) {
+                console.error('Error cargando dashboard:', error);
+            }
+        }
+        
+        // Cargar mensajes recientes
+        async function loadRecentMessages() {
+            try {
+                const response = await fetch('/api/messages?limit=5');
+                const data = await response.json();
+                
+                const container = document.getElementById('recent-messages');
+                let html = '';
+                
+                data.messages.forEach(msg => {
+                    const date = new Date(msg.timestamp).toLocaleString('es-CO');
+                    const intentClass = `intent-${msg.intent || 'no_identificado'}`;
+                    
+                    html += `
+                        <div class="message-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>${msg.from_number}</strong>
+                                    <span class="intent-badge ${intentClass}">
+                                        ${getIntentLabel(msg.intent)}
+                                    </span>
+                                </div>
+                                <small class="text-muted">${date}</small>
+                            </div>
+                            <div class="mt-1">${escapeHtml(msg.text || '')}</div>
+                            ${msg.response_sent ? `
+                            <div class="mt-1 text-success">
+                                <strong>Respuesta:</strong> ${escapeHtml(msg.response_sent.substring(0, 80))}${msg.response_sent.length > 80 ? '...' : ''}
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html || '<p class="text-muted">No hay mensajes</p>';
+                
+            } catch (error) {
+                console.error('Error cargando mensajes recientes:', error);
+            }
+        }
+        
+        // Cargar todos los mensajes
+        async function loadMessages() {
+            try {
+                const search = document.getElementById('search-messages').value;
+                let url = '/api/messages?limit=50';
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const container = document.getElementById('messages-list');
+                let html = '';
+                
+                data.messages.forEach(msg => {
+                    const date = new Date(msg.timestamp).toLocaleString('es-CO');
+                    const intentClass = `intent-${msg.intent || 'no_identificado'}`;
+                    
+                    html += `
+                        <div class="message-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>${msg.from_number}</strong>
+                                    <span class="intent-badge ${intentClass}">
+                                        ${getIntentLabel(msg.intent)}
+                                    </span>
+                                </div>
+                                <small class="text-muted">${date}</small>
+                            </div>
+                            <div class="mt-1"><strong>Mensaje:</strong> ${escapeHtml(msg.text || '')}</div>
+                            ${msg.response_sent ? `
+                            <div class="mt-1 text-success">
+                                <strong>Respuesta enviada:</strong> ${escapeHtml(msg.response_sent)}
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html || '<p class="text-muted">No hay mensajes</p>';
+                
+            } catch (error) {
+                console.error('Error cargando mensajes:', error);
+            }
+        }
+        
+        // Cargar respuestas
+        async function loadResponses() {
+            try {
+                const response = await fetch('/api/responses');
+                const responses = await response.json();
+                
+                const container = document.getElementById('responses-list');
+                let html = '';
+                
+                responses.forEach(resp => {
+                    html += `
+                        <div class="response-card ${resp.is_active ? 'active' : ''}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div style="flex: 1;">
+                                    <h6>${escapeHtml(resp.name)} 
+                                        <span class="badge ${resp.is_active ? 'bg-success' : 'bg-secondary'}">
+                                            ${resp.is_active ? 'Activa' : 'Inactiva'}
+                                        </span>
+                                        <span class="badge bg-primary">Prioridad: ${resp.priority}</span>
+                                    </h6>
+                                    <p class="mb-1"><strong>Intención:</strong> ${getIntentLabel(resp.intent)}</p>
+                                    <p class="mb-1"><strong>Palabras clave:</strong> ${resp.trigger_words || '(ninguna)'}</p>
+                                    <div class="mt-2 p-2 bg-light rounded">
+                                        <strong>Respuesta:</strong><br>
+                                        ${escapeHtml(resp.response_text)}
+                                    </div>
+                                    <div class="mt-2 text-muted small">
+                                        Usada: ${resp.use_count || 0} veces
+                                    </div>
+                                </div>
+                                <div class="btn-group ms-3">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editResponse(${resp.id})">
+                                        Editar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html || '<p class="text-muted">No hay respuestas configuradas</p>';
+                
+            } catch (error) {
+                console.error('Error cargando respuestas:', error);
+            }
+        }
+        
+        // Probar respuesta
+        async function testResponse() {
+            const message = document.getElementById('test-message').value.trim();
+            if (!message) {
+                alert('Por favor escribe un mensaje para probar');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/test-response', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('test-result');
+                resultDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <h5>Resultado de la prueba:</h5>
+                        <p><strong>Mensaje:</strong> "${escapeHtml(message)}"</p>
+                        <p><strong>Intención detectada:</strong> ${getIntentLabel(data.intent)}</p>
+                        <p><strong>Respuesta sugerida:</strong></p>
+                        <div class="p-3 bg-light rounded">
+                            ${escapeHtml(data.suggested_response)}
+                        </div>
+                        <p class="mt-2"><strong>Regla aplicada:</strong> ${escapeHtml(data.matched_response?.name || 'N/A')}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error probando respuesta:', error);
+                alert('Error probando respuesta');
+            }
+        }
+        
+        // Editar respuesta
+        function editResponse(id) {
+            if (id === 0) {
+                // Nueva respuesta
+                document.getElementById('response-id').value = '0';
+                document.getElementById('response-name').value = '';
+                document.getElementById('response-intent').value = 'saludo';
+                document.getElementById('response-triggers').value = '';
+                document.getElementById('response-text').value = '';
+                document.getElementById('response-active').checked = true;
+                document.getElementById('response-priority').value = '1';
+            } else {
+                // Cargar respuesta existente
+                fetch('/api/responses')
+                    .then(r => r.json())
+                    .then(responses => {
+                        const resp = responses.find(r => r.id === id);
+                        if (resp) {
+                            document.getElementById('response-id').value = resp.id;
+                            document.getElementById('response-name').value = resp.name || '';
+                            document.getElementById('response-intent').value = resp.intent || 'saludo';
+                            document.getElementById('response-triggers').value = resp.trigger_words || '';
+                            document.getElementById('response-text').value = resp.response_text || '';
+                            document.getElementById('response-active').checked = resp.is_active !== false;
+                            document.getElementById('response-priority').value = resp.priority || 1;
+                        }
+                    });
+            }
+            new bootstrap.Modal(document.getElementById('responseModal')).show();
+        }
+
+        // Guardar respuesta
+        async function saveResponse() {
+            const id = parseInt(document.getElementById('response-id').value);
+            const newResp = {
+                id: id || Date.now(),
+                name: document.getElementById('response-name').value,
+                intent: document.getElementById('response-intent').value,
+                trigger_words: document.getElementById('response-triggers').value,
+                response_text: document.getElementById('response-text').value,
+                is_active: document.getElementById('response-active').checked,
+                priority: parseInt(document.getElementById('response-priority').value) || 1,
+                use_count: 0,
+                success_rate: 100
+            };
+
+            try {
+                const resp = await fetch('/api/responses');
+                let responses = await resp.json();
+
+                if (id) {
+                    const idx = responses.findIndex(r => r.id === id);
+                    if (idx >= 0) {
+                        newResp.use_count = responses[idx].use_count || 0;
+                        responses[idx] = newResp;
+                    } else {
+                        responses.push(newResp);
+                    }
+                } else {
+                    responses.push(newResp);
+                }
+
+                await fetch('/api/save-responses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ responses })
+                });
+
+                bootstrap.Modal.getInstance(document.getElementById('responseModal')).hide();
+                loadResponses();
+            } catch (error) {
+                console.error('Error guardando respuesta:', error);
+                alert('Error guardando respuesta');
+            }
+        }
+
+        // Utilidades
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getIntentLabel(intent) {
+            const labels = {
+                'saludo': 'Saludo',
+                'bateria': 'Bateria',
+                'consulta_estado': 'Consulta Estado',
+                'consulta_precio': 'Consulta Precio',
+                'no_identificado': 'No Identificado'
+            };
+            return labels[intent] || intent || 'Desconocido';
+        }
+    </script>
+</body>
+</html>

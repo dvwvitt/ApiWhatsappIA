@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1776227735913,
+    "name": "Alejandro Hernández",
+    "phone": "573123031988",
+    "roles": [
+      "bateria",
+      "reparacion",
+      "joyas",
+      "ventas",
+      "general"
+    ],
+    "is_active": true,
+    "created_at": "2026-04-15T04:35:35.913Z"
+  }
+]

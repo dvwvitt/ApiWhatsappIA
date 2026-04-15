@@ -1,0 +1,175 @@
+[
+  {
+    "id": 1,
+    "name": "Saludo Inicial",
+    "response_text": "¡Hola! Soy el asistente de Relojería Milla de Oro. ¿En qué puedo ayudarte?",
+    "intent": "saludo",
+    "trigger_words": "hola,buenos,buenas",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 4,
+    "success_rate": 100
+  },
+  {
+    "id": 2,
+    "name": "Saludo Amigable",
+    "response_text": "¡Hola! ¿Cómo estás? Estoy aquí para ayudarte con lo que necesites.",
+    "intent": "saludo",
+    "trigger_words": "qué tal,cómo estás,saludos,buen día",
+    "is_active": true,
+    "priority": 2,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 3,
+    "name": "Despedida Básica",
+    "response_text": "¡Gracias por contactarnos! Que tengas un excelente día.",
+    "intent": "despedida",
+    "trigger_words": "adiós,gracias,chao,hasta luego,nos vemos,bye",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 4,
+    "name": "Despedida Amable",
+    "intent": "despedida",
+    "trigger_words": "muchas gracias,hasta pronto, gracias.",
+    "response_text": "Fue un gusto ayudarte. ¡Vuelve cuando necesites!",
+    "is_active": true,
+    "priority": 2,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 5,
+    "name": "Consulta Batería",
+    "intent": "bateria",
+    "trigger_words": "batería,bateria,pila",
+    "response_text": "Claro, cambiamos baterías para todo tipo de relojes. ¿Qué tipo de reloj tienes?",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 0,
+    "success_rate": 100,
+    "follow_ups": [
+      {
+        "step": 1,
+        "question": "¿Qué tipo de reloj?",
+        "options": ["Analógico", "Digital", "Smartwatch"],
+        "trigger_words": "analogico,analogo,digital,smartwatch",
+        "response_map": {
+          "analogico": "¿De qué marca es tu reloj analógico?",
+          "analogo": "¿De qué marca es tu reloj analógico?",
+          "digital": "Para relojes digitales el cambio cuesta $12.000. ¿Deseas agendar cita?",
+          "smartwatch": "Para smartwatch necesitamos revisar el modelo. ¿Puedes traerlo a nuestra tienda en CC Milla de Oro?"
+        },
+        "default_response": "No entendí. ¿Es Analógico, Digital o Smartwatch?"
+      },
+      {
+        "step": 2,
+        "condition": "analogico",
+        "question": "¿De qué marca?",
+        "options": ["Casio", "Citizen", "Seiko", "Otro"],
+        "trigger_words": "casio,citizen,seiko,otro",
+        "response_map": {
+          "casio": "Batería para Casio analógico: $10.000. ¿Deseas agendar cita? Estamos en CC Milla de Oro.",
+          "citizen": "Batería para Citizen analógico: $15.000. ¿Deseas agendar cita? Estamos en CC Milla de Oro.",
+          "seiko": "Batería para Seiko analógico: $15.000. ¿Deseas agendar cita? Estamos en CC Milla de Oro.",
+          "otro": "Trae tu reloj y lo revisamos sin costo. Estamos en CC Milla de Oro."
+        },
+        "default_response": "No identifiqué la marca. ¿Casio, Citizen, Seiko u Otro?"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Baterías Disponibles",
+    "response_text": "Sí, tenemos baterías para la mayoría de marcas y modelos. ¿Podrías decirme el tipo de reloj o el número de la batería?",
+    "intent": "bateria",
+    "trigger_words": "tienen baterías,necesito batería,cambio de batería,batería para",
+    "is_active": true,
+    "priority": 2,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 9,
+    "name": "Ubicación",
+    "intent": "ubicacion",
+    "trigger_words": "dónde están,ubicación,dirección,dónde se encuentran,lugar,cómo llegar, ubicados",
+    "response_text": "Estamos ubicados en el Centro Comercial Milla de Oro. ¿Necesitas indicaciones?",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 10,
+    "name": "Consulta de Precios",
+    "response_text": "Los precios varían según el servicio. Para darte una cotización exacta, ¿podrías decirme qué necesitas específicamente?",
+    "intent": "consulta_precio",
+    "trigger_words": "cuánto cuesta,precio,valor,cuánto vale,costo,cuanto",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 11,
+    "name": "Servicios Ofrecidos",
+    "response_text": "Ofrecemos cambio de baterías, reparación de relojes, mantenimiento, pulseras/correas, y valoración de joyas. ¿Cuál te interesa?",
+    "intent": "servicios",
+    "trigger_words": "qué servicios,hacen,reparan,qué hacen,servicios disponibles",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 12,
+    "name": "Compra de Relojes",
+    "response_text": "Sí compramos. Envíanos la marca y modelo, adjunta una foto.",
+    "intent": "consulta",
+    "trigger_words": "compra,compraventa,empeñar,empeñan,vender reloj",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 13,
+    "name": "No Identificado",
+    "response_text": "Entendido. Un especialista te contactará en breve para ayudarte.",
+    "intent": "no_identificado",
+    "trigger_words": "",
+    "is_active": true,
+    "priority": 99,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 1776067136015,
+    "name": "compra de relojes",
+    "intent": "consulta",
+    "trigger_words": "compra, compraventa,",
+    "response_text": "si compramos relojes, envía la marca, el modelo y cunato estas dispuesto a recibir por tu reloj",
+    "is_active": true,
+    "priority": 1,
+    "use_count": 0,
+    "success_rate": 100
+  },
+  {
+    "id": 1776220707077,
+    "name": "Horarios unificados",
+    "intent": "horarios",
+    "trigger_words": "hora,abren,horario,cuándo abren,cuándo cierran,horas de atención,horarios,horario de atención,horas de trabajo,cuándo están disponibles,abierto,abre,cierra,atención",
+    "response_text": "Nuestro horario de atención es de lunes a viernes de 9:00 am a 7:00 pm, y sábados de 9:00 am a 6:00 pm. Los domingos y festivos no hay servicio.",
+    "is_active": true,
+    "priority": 50,
+    "use_count": 0,
+    "success_rate": 0,
+    "action": "edit"
+  }
+]

@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+
+# Configuración sensible (NUNCA subir a git)
+.env
+.env.local
+
+# Datos runtime y personales
+data/messages.json
+data/sessions.json
+data/conversation-states.json
+
+# Logs y PIDs
+*.pid
+logs/*.log
+logs/pids.info
+
+# Backups
+data/*.backup*
+webhook-history.json
+
+# Sistema
+.DS_Store
+*.tmp

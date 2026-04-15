@@ -1,0 +1,31 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-typescript-next",
+    "christian-kohler.npm-intellisense",
+    "christian-kohler.path-intellisense",
+    "ms-vscode.vscode-js-profile-flame",
+    "ms-vscode.vscode-node-azure-pack",
+    "ms-vscode.node-debug2",
+    "ms-vscode.vscode-javascript-booster",
+    "ms-vscode.vscode-json-editor",
+    "ms-vscode.live-server",
+    "ritwickdey.liveserver",
+    "ms-vscode.live-server",
+    "ms-azuretools.vscode-docker",
+    "gruntfuggly.todo-tree",
+    "usernamehw.errorlens",
+    "wix.vscode-import-cost",
+    "kisstkondoros.vscode-gutter-preview",
+    "oderwat.indent-rainbow",
+    "aaron-bond.better-comments",
+    "coenraads.bracket-pair-colorizer-2",
+    "pkief.material-icon-theme",
+    "johnpapa.vscode-peacock",
+    "ms-vscode-remote.remote-ssh",
+    "ms-vscode-remote.remote-containers",
+    "github.copilot",
+    "github.copilot-chat"
+  ]
+}

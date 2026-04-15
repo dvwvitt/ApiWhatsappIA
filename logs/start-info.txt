@@ -1,0 +1,6 @@
+Servicios iniciados: Mon Apr 13 02:01:45 -05 2026
+Middleware PID: 27649
+Webhook PID: 27652
+API PID: 27656
+URL Panel: http://localhost:3002/panels/unified/
+WhatsApp: +573123080083

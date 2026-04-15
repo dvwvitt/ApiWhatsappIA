@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start All Services",
+      "type": "shell",
+      "command": "./scripts/start-all.sh",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop All Services",
+      "type": "shell",
+      "command": "./scripts/stop-all.sh",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Check Status",
+      "type": "shell",
+      "command": "./scripts/check-status.sh",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      }
+    },
+    {
+      "label": "Open Dashboard",
+      "type": "shell",
+      "command": "open http://localhost:3002/index.html",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "never",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "View Middleware Logs",
+      "type": "shell",
+      "command": "tail -f logs/middleware.log",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "clear": true
+      }
+    }
+  ]
+}

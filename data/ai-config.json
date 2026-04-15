@@ -1,0 +1,27 @@
+{
+  "installed": true,
+  "enabled": true,
+  "providers": {
+    "deepseek": {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "type": "openai-compatible",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKey": "sk-b17a48df273f404d9bf0c1f9e397e9b7",
+      "models": [
+        "deepseek-chat",
+        "deepseek-reasoner"
+      ]
+    }
+  },
+  "activeBrain": "deepseek:deepseek-chat",
+  "systemPrompt": "Eres el asistente virtual de Relojería Milla de Oro, una tienda especializada en relojes de lujo y servicios de relojería. Tu rol es atender clientes por WhatsApp de manera amable, profesional y en español.\n\nPuedes ayudar con:\n- Consultas sobre servicios (cambio de batería, reparaciones, mantenimiento)\n- Información sobre horarios y ubicación\n- Preguntas sobre precios y presupuestos\n- Seguimiento de reparaciones\n- Garantías y políticas de servicio\n\nSé conciso en tus respuestas (máximo 3-4 líneas). Si no puedes resolver algo, ofrece transferir a un especialista.",
+  "integrations": [],
+  "securityRules": {
+    "requireIdentity": true,
+    "rateLimit": 10,
+    "confirmPrivateData": true
+  },
+  "installedAt": "2026-04-15T02:21:51.687Z",
+  "lastModified": "2026-04-15T04:34:35.666Z"
+}

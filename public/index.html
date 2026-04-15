@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel - WhatsApp Business</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .sidebar { 
+            background: linear-gradient(180deg, #2c3e50 0%, #1a252f 100%);
+            color: white; 
+            min-height: 100vh;
+            position: fixed;
+            width: 250px;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.1);
+        }
+        .main-content { margin-left: 250px; padding: 20px; }
+        .sidebar a { 
+            color: #ecf0f1; 
+            text-decoration: none; 
+            padding: 12px 20px; 
+            display: block;
+            border-left: 4px solid transparent;
+            transition: all 0.3s;
+        }
+        .sidebar a:hover { 
+            background: rgba(255,255,255,0.1); 
+            color: white;
+            border-left: 4px solid #3498db;
+        }
+        .sidebar a.active { 
+            background: rgba(52, 152, 219, 0.2); 
+            color: #3498db;
+            border-left: 4px solid #3498db;
+        }
+        .stat-card { 
+            background: white; 
+            border-radius: 15px; 
+            padding: 25px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: none;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-number { font-size: 2.5rem; font-weight: bold; color: #2c3e50; }
+        .stat-label { font-size: 0.9rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
+        .message-item { 
+            border-left: 4px solid #3498db; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .intent-badge { 
+            display: inline-block; 
+            padding: 4px 10px; 
+            border-radius: 20px; 
+            font-size: 0.8rem; 
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        .intent-saludo { background: #2ecc71; color: white; }
+        .intent-bateria { background: #f39c12; color: white; }
+        .intent-consulta_estado { background: #3498db; color: white; }
+        .intent-consulta_precio { background: #9b59b6; color: white; }
+        .intent-no_identificado { background: #e74c3c; color: white; }
+        .btn-primary { background: #3498db; border: none; }
+        .btn-success { background: #2ecc71; border: none; }
+        .btn-warning { background: #f39c12; border: none; }
+        .btn-danger { background: #e74c3c; border: none; }
+        .nav-tabs .nav-link.active { border-bottom: 3px solid #3498db; font-weight: bold; }
+        .table-hover tbody tr:hover { background: rgba(52, 152, 219, 0.05); }
+        .response-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+        .response-card.active { border-color: #2ecc71; background: rgba(46, 204, 113, 0.05); }
+        .response-card.inactive { border-color: #e0e0e0; background: #f8f9fa; opacity: 0.7; }
+        .test-area { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; }
+        .message-bubble { 
+            background: #e3f2fd; 
+            border-radius: 18px; 
+            padding: 10px 15px; 
+            margin: 5px 0;
+            max-width: 70%;
+        }
+        .message-bubble.incoming { background: #e3f2fd; align-self: flex-start; }
+        .message-bubble.outgoing { background: #d4edda; align-self: flex-end; }
+        .timestamp { font-size: 0.8rem; color: #7f8c8d; margin-top: 5px; }
+        .export-btn { background: #34495e; color: white; border: none; }
+        .export-btn:hover { background: #2c3e50; }
+
+        /* Conversation view */
+        .conv-panel { height: calc(100vh - 120px); }
+        .conv-list-col { height: 100%; overflow-y: auto; border-right: 1px solid #dee2e6; }
+        .conv-thread-col { height: 100%; display: flex; flex-direction: column; }
+        .conversation-item {
+            padding: 12px 15px; border-bottom: 1px solid #eee;
+            cursor: pointer; transition: background .2s;
+        }
+        .conversation-item:hover { background: #f0f8ff; }
+        .conversation-item.active { background: rgba(52,152,219,.1); border-left: 3px solid #3498db; }
+        .conv-number { font-weight: 600; color: #2c3e50; }
+        .conv-preview { font-size: .85rem; color: #7f8c8d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+        .conv-time { font-size: .75rem; color: #95a5a6; }
+        .conv-thread-area {
+            flex: 1; overflow-y: auto; padding: 15px;
+            background: #e5ddd5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3Cpattern id='p' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='20' cy='20' r='1' fill='%23ccc' opacity='.15'/%3E%3C/pattern%3E%3C/defs%3E%3Crect fill='url(%23p)' width='200' height='200'/%3E%3C/svg%3E");
+        }
+        .conv-bubble {
+            max-width: 65%; padding: 8px 14px; border-radius: 12px;
+            margin-bottom: 6px; position: relative; word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,.1);
+        }
+        .conv-bubble.incoming {
+            background: #fff; align-self: flex-start; border-top-left-radius: 2px;
+        }
+        .conv-bubble.outgoing {
+            background: #dcf8c6; align-self: flex-end; border-top-right-radius: 2px;
+        }
+        .conv-bubble .bubble-time {
+            font-size: .7rem; color: #999; text-align: right; margin-top: 4px;
+        }
+        .conv-bubble .bubble-intent {
+            font-size: .65rem; padding: 1px 6px; border-radius: 8px;
+            display: inline-block; margin-left: 6px;
+        }
+
+        /* ===== Ngrok Tunnel Panel ===== */
+        @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(46,204,113,.6)} 50%{box-shadow:0 0 0 12px rgba(46,204,113,0)} }
+        @keyframes pulse-red   { 0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.6)}  50%{box-shadow:0 0 0 12px rgba(231,76,60,0)} }
+        @keyframes pulse-amber { 0%,100%{box-shadow:0 0 0 0 rgba(243,156,18,.6)} 50%{box-shadow:0 0 0 12px rgba(243,156,18,0)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes slide-up { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes data-flow { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+        .tun-card { border-radius:16px; overflow:hidden; transition:all .4s cubic-bezier(.4,0,.2,1); animation:slide-up .5s ease-out }
+        .tun-card:hover { transform:translateY(-3px); box-shadow:0 12px 40px rgba(0,0,0,.12) }
+
+        .tun-status-orb { width:18px;height:18px;border-radius:50%;display:inline-block;vertical-align:middle;transition:background .4s }
+        .tun-status-orb.online  { background:#2ecc71; animation:pulse-green 2s infinite }
+        .tun-status-orb.offline { background:#e74c3c; animation:pulse-red 2s infinite }
+        .tun-status-orb.loading { background:#f39c12; animation:pulse-amber 1s infinite }
+
+        .tun-url-box {
+            background: linear-gradient(135deg,#1a1a2e,#16213e);
+            border-radius:12px; padding:16px 20px; color:#0f0;
+            font-family:'Fira Code','SF Mono',monospace; font-size:15px;
+            word-break:break-all; position:relative; overflow:hidden;
+            border:1px solid rgba(0,255,0,.15); transition:all .3s;
+        }
+        .tun-url-box:hover { border-color:rgba(0,255,0,.4) }
+        .tun-url-box .data-stream {
+            position:absolute;top:0;left:0;right:0;bottom:0;
+            background:linear-gradient(90deg,transparent 0%,rgba(0,255,0,.04) 50%,transparent 100%);
+            background-size:200% 100%; animation:data-flow 3s linear infinite; pointer-events:none;
+        }
+
+        .tun-metric { text-align:center; padding:12px; border-radius:10px; background:rgba(52,152,219,.06); transition:all .3s }
+        .tun-metric:hover { background:rgba(52,152,219,.12); transform:scale(1.03) }
+        .tun-metric-val { font-size:1.6rem;font-weight:700;color:#2c3e50; transition:all .3s }
+        .tun-metric-label { font-size:.75rem;color:#7f8c8d;text-transform:uppercase;letter-spacing:1px }
+
+        .tun-btn { border-radius:10px; padding:10px 20px; font-weight:600; transition:all .25s; border:none; position:relative; overflow:hidden }
+        .tun-btn:active { transform:scale(.95) }
+        .tun-btn-start   { background:linear-gradient(135deg,#2ecc71,#27ae60); color:#fff }
+        .tun-btn-start:hover { background:linear-gradient(135deg,#27ae60,#219a52); color:#fff; box-shadow:0 4px 15px rgba(46,204,113,.4) }
+        .tun-btn-stop    { background:linear-gradient(135deg,#f39c12,#e67e22); color:#fff }
+        .tun-btn-stop:hover  { background:linear-gradient(135deg,#e67e22,#d35400); color:#fff; box-shadow:0 4px 15px rgba(243,156,18,.4) }
+        .tun-btn-restart { background:linear-gradient(135deg,#3498db,#2980b9); color:#fff }
+        .tun-btn-restart:hover { background:linear-gradient(135deg,#2980b9,#1f6da0); color:#fff; box-shadow:0 4px 15px rgba(52,152,219,.4) }
+        .tun-btn-kill    { background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff }
+        .tun-btn-kill:hover { background:linear-gradient(135deg,#c0392b,#a93226); color:#fff; box-shadow:0 4px 15px rgba(231,76,60,.4) }
+        .tun-btn .spinner-border { width:16px;height:16px;border-width:2px }
+
+        .tun-log { background:#0d1117; color:#c9d1d9; border-radius:10px; padding:14px; font-family:'Fira Code','SF Mono',monospace; font-size:12px; max-height:200px; overflow-y:auto; line-height:1.6 }
+        .tun-log::-webkit-scrollbar { width:6px }
+        .tun-log::-webkit-scrollbar-thumb { background:#30363d; border-radius:3px }
+
+        .tun-key-input { font-family:'Fira Code','SF Mono',monospace; font-size:13px; letter-spacing:.5px }
+
+        /* ===== IA / OpenClaw Panel ===== */
+        .wizard-steps { display:flex; align-items:center; justify-content:center; margin-bottom:30px; }
+        .wizard-step { width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;transition:all .3s;flex-shrink:0; }
+        .wizard-step.pending { background:#e9ecef;color:#6c757d;border:2px solid #dee2e6; }
+        .wizard-step.active  { background:#3498db;color:#fff;box-shadow:0 0 0 4px rgba(52,152,219,.25); }
+        .wizard-step.done    { background:#2ecc71;color:#fff; }
+        .wizard-step-connector { flex:1;height:3px;background:#dee2e6;margin:0 6px; }
+        .wizard-step-connector.done { background:#2ecc71; }
+        .wizard-pane { display:none; } .wizard-pane.active { display:block; }
+
+        .ai-provider-card { border:2px solid #dee2e6;border-radius:14px;padding:18px;cursor:pointer;transition:all .25s;user-select:none; }
+        .ai-provider-card:hover { border-color:#3498db;background:rgba(52,152,219,.04); }
+        .ai-provider-card.selected { border-color:#3498db;background:rgba(52,152,219,.08); }
+        .ai-provider-card .provider-icon { font-size:2rem;margin-bottom:8px; }
+
+        .ai-status-pill { display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:30px;font-weight:600;font-size:.9rem; }
+        .ai-status-pill.on  { background:rgba(46,204,113,.12);color:#27ae60; }
+        .ai-status-pill.off { background:rgba(231,76,60,.1);color:#e74c3c; }
+        .ai-status-pill .ai-dot { width:10px;height:10px;border-radius:50%;animation:pulse-green 2s infinite; }
+        .ai-status-pill.off .ai-dot { background:#e74c3c;animation:pulse-red 2s infinite; }
+        .ai-status-pill.on  .ai-dot { background:#2ecc71; }
+
+        .brain-card { border:1px solid #dee2e6;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between; }
+        .brain-card.active-brain { border-color:#3498db;background:rgba(52,152,219,.06); }
+
+        .ai-chat-area { min-height:300px;max-height:400px;overflow-y:auto;padding:15px;background:#e5ddd5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3Cpattern id='p' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='20' cy='20' r='1' fill='%23ccc' opacity='.15'/%3E%3C/pattern%3E%3C/defs%3E%3Crect fill='url(%23p)' width='200' height='200'/%3E%3C/svg%3E");border-radius:12px;display:flex;flex-direction:column;gap:6px; }
+        .ai-change-card { background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;font-size:.85rem;margin-top:6px; }
+
+        .follow-up-step { border:1px solid #dee2e6; border-radius:10px; padding:14px; margin-bottom:12px; background:#fafbfc; position:relative; }
+        .follow-up-step .step-number { display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#3498db;color:#fff;font-size:.8rem;font-weight:700; }
+        .follow-up-step .btn-remove-step { position:absolute;top:8px;right:8px; }
+        .option-row { display:flex;gap:8px;align-items:center;margin-bottom:6px; }
+        .option-row input:first-child { max-width:140px; }
+
+        .int-table th { background:#f8f9fa;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px; }
+        .badge-cat-public { background:#d4edda;color:#155724; }
+        .badge-cat-private { background:#f8d7da;color:#721c24; }
+        .badge-cat-restricted { background:#fff3cd;color:#856404; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar d-none d-md-block">
+        <div class="p-4">
+            <h4 class="mb-4"><i class="bi bi-whatsapp me-2"></i> WhatsApp Control</h4>
+            <div class="nav flex-column" id="nav-tabs">
+                <a href="#dashboard" class="active" data-bs-toggle="tab">
+                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                </a>
+                <a href="#messages" data-bs-toggle="tab">
+                    <i class="bi bi-chat-text me-2"></i> Mensajes
+                    <span class="badge bg-primary float-end" id="message-count">0</span>
+                </a>
+                <a href="#conversaciones" data-bs-toggle="tab">
+                    <i class="bi bi-chat-left-text me-2"></i> Conversaciones
+                </a>
+                <a href="#responses" data-bs-toggle="tab">
+                    <i class="bi bi-reply me-2"></i> Respuestas
+                    <span class="badge bg-success float-end" id="response-count">0</span>
+                </a>
+                <a href="#stats" data-bs-toggle="tab">
+                    <i class="bi bi-graph-up me-2"></i> Estadísticas
+                </a>
+                <a href="#training" data-bs-toggle="tab">
+                    <i class="bi bi-robot me-2"></i> Entrenamiento IA
+                </a>
+                <a href="#test" data-bs-toggle="tab">
+                    <i class="bi bi-play-circle me-2"></i> Probar Respuestas
+                </a>
+                <a href="#export" data-bs-toggle="tab">
+                    <i class="bi bi-download me-2"></i> Exportar
+                </a>
+                <a href="#tunnel" data-bs-toggle="tab">
+                    <i class="bi bi-globe me-2"></i> Ngrok Tunnel
+                    <span class="float-end" id="tunnel-dot" style="width:10px;height:10px;border-radius:50%;display:inline-block;background:#6c757d;"></span>
+                </a>
+                <a href="#ai-management" data-bs-toggle="tab">
+                    <i class="bi bi-cpu me-2"></i> IA / OpenClaw
+                    <span class="float-end" id="ai-status-dot" style="width:10px;height:10px;border-radius:50%;display:inline-block;background:#6c757d;"></span>
+                </a>
+                <a href="#advisors" data-bs-toggle="tab">
+                    <i class="bi bi-person-badge me-2"></i> Asesores
+                    <span class="badge bg-info float-end" id="advisor-count">0</span>
+                </a>
+                <hr class="border-secondary my-2">
+                <a href="#system-status" data-bs-toggle="tab">
+                    <i class="bi bi-activity me-2"></i> Sistema
+                    <span class="badge bg-success float-end" id="system-status-badge">5/5</span>
+                </a>
+                <a href="#config" data-bs-toggle="tab">
+                    <i class="bi bi-gear me-2"></i> Configuración
+                </a>
+            </div>
+
+            <div class="mt-5 pt-5 border-top border-secondary">
+                <small class="text-muted">Relojería Milla de Oro</small><br>
+                <strong>+573123080083</strong><br>
+                <small class="text-muted" id="last-update">Última actualización: --:--:--</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Navbar -->
+    <nav class="navbar navbar-dark bg-dark d-md-none">
+        <div class="container-fluid">
+            <span class="navbar-brand">
+                <i class="bi bi-whatsapp me-2"></i> WhatsApp Control
+            </span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </nav>
+    <div class="collapse d-md-none" id="mobileNav">
+        <div class="bg-dark p-3">
+            <div class="nav flex-column" id="mobile-nav-tabs">
+                <a href="#dashboard" class="text-white active" data-bs-toggle="tab">
+                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                </a>
+                <a href="#messages" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-chat-text me-2"></i> Mensajes
+                </a>
+                <a href="#conversaciones" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-chat-left-text me-2"></i> Conversaciones
+                </a>
+                <a href="#responses" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-reply me-2"></i> Respuestas
+                </a>
+                <a href="#stats" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-graph-up me-2"></i> Estadísticas
+                </a>
+                <a href="#training" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-robot me-2"></i> Entrenamiento IA
+                </a>
+                <a href="#test" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-play-circle me-2"></i> Probar
+                </a>
+                <a href="#export" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-download me-2"></i> Exportar
+                </a>
+                <a href="#tunnel" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-globe me-2"></i> Ngrok Tunnel
+                </a>
+                <a href="#ai-management" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-cpu me-2"></i> IA / OpenClaw
+                </a>
+                <a href="#advisors" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-person-badge me-2"></i> Asesores
+                </a>
+                <hr class="border-secondary my-2">
+                <a href="#system-status" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-activity me-2"></i> Sistema
+                </a>
+                <a href="#config" class="text-white" data-bs-toggle="tab">
+                    <i class="bi bi-gear me-2"></i> Configuración
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="tab-content">
+            <!-- Dashboard Tab -->
+            <div class="tab-pane fade show active" id="dashboard">
+                <h2 class="mb-4"><i class="bi bi-speedometer2 me-2"></i> Dashboard</h2>
+                
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="total-messages">0</div>
+                            <div class="stat-label">Mensajes Totales</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="today-messages">0</div>
+                            <div class="stat-label">Hoy</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="active-responses">0</div>
+                            <div class="stat-label">Respuestas Activas</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="response-rate">0%</div>
+                            <div class="stat-label">Tasa de Respuesta</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-pie-chart me-2"></i> Distribución por Intención</h5>
+                            <div id="intent-chart" style="height: 300px;">
+                                <!-- Chart will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-people me-2"></i> Top Remitentes</h5>
+                            <div id="top-senders" style="height: 300px; overflow-y: auto;">
+                                <!-- Top senders list -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card mt-4">
+                    <h5><i class="bi bi-clock-history me-2"></i> Mensajes Recientes</h5>
+                    <div id="recent-messages">
+                        <!-- Recent messages will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Tab -->
+            <div class="tab-pane fade" id="messages">
+                <h2 class="mb-4"><i class="bi bi-chat-text me-2"></i> Historial de Mensajes</h2>
+                
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" id="search-messages" placeholder="Buscar mensajes...">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-control" id="filter-intent">
+                            <option value="">Todas las intenciones</option>
+                            <option value="saludo">Saludo</option>
+                            <option value="bateria">Batería</option>
+                            <option value="consulta_estado">Consulta Estado</option>
+                            <option value="consulta_precio">Consulta Precio</option>
+                            <option value="no_identificado">No Identificado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" class="form-control" id="filter-date-from" placeholder="Desde">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" class="form-control" id="filter-date-to" placeholder="Hasta">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary" onclick="loadMessages()">
+                            <i class="bi bi-search me-2"></i> Buscar
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                            <i class="bi bi-x-circle me-2"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover" id="messages-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Remitente</th>
+                                <th>Mensaje</th>
+                                <th>Intención</th>
+                                <th>Respuesta</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="messages-body">
+                            <!-- Messages will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <div>
+                        Mostrando <span id="messages-showing">0</span> de <span id="messages-total">0</span> mensajes
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="prev-page" disabled>
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </button>
+                        <span class="mx-2">Página <span id="current-page">1</span></span>
+                        <button class="btn btn-sm btn-outline-secondary" id="next-page" disabled>
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversaciones Tab -->
+            <div class="tab-pane fade" id="conversaciones">
+                <h2 class="mb-3"><i class="bi bi-chat-left-text me-2"></i> Conversaciones</h2>
+
+                <div class="row conv-panel">
+                    <!-- Lista de contactos -->
+                    <div class="col-md-4 conv-list-col">
+                        <div class="p-2">
+                            <input type="text" class="form-control form-control-sm" id="search-conversations"
+                                   placeholder="Buscar por numero...">
+                        </div>
+                        <div id="conversation-list">
+                            <p class="text-muted text-center mt-4">Cargando conversaciones...</p>
+                        </div>
+                    </div>
+
+                    <!-- Thread de conversación -->
+                    <div class="col-md-8 conv-thread-col">
+                        <div id="conversation-header" class="p-3 border-bottom bg-white" style="display:none;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i><span id="conv-contact-number"></span></h5>
+                                    <small class="text-muted" id="conv-message-count"></small>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="exportConversation('json')" title="Exportar JSON">
+                                        <i class="bi bi-filetype-json"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="exportConversation('txt')" title="Exportar TXT">
+                                        <i class="bi bi-file-text"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="conv-thread-area" id="conversation-thread">
+                            <div class="text-center text-muted mt-5" id="conv-placeholder">
+                                <i class="bi bi-chat-left-text" style="font-size:3rem; opacity:.3;"></i>
+                                <p class="mt-2">Selecciona una conversacion para ver los mensajes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responses Tab -->
+            <div class="tab-pane fade" id="responses">
+                <h2 class="mb-4"><i class="bi bi-reply me-2"></i> Control de Respuestas</h2>
+                
+                <div class="mb-4">
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addResponseModal">
+                        <i class="bi bi-plus-circle me-2"></i> Agregar Respuesta
+                    </button>
+                    <button class="btn btn-outline-primary ms-2" onclick="loadResponses()">
+                        <i class="bi bi-arrow-clockwise me-2"></i> Actualizar
+                    </button>
+                </div>
+
+                <div id="responses-list">
+                    <!-- Responses will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div class="tab-pane fade" id="stats">
+                <h2 class="mb-4"><i class="bi bi-graph-up me-2"></i> Estadísticas</h2>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-bar-chart me-2"></i> Actividad por Día</h5>
+                            <div id="daily-activity" style="height: 300px;">
+                                <!-- Daily activity chart -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-check-circle me-2"></i> Efectividad de Respuestas</h5>
+                            <div id="response-effectiveness" style="height: 300px;">
+                                <!-- Response effectiveness -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card mt-4">
+                    <h5><i class="bi bi-table me-2"></i> Métricas Detalladas</h5>
+                    <div id="detailed-metrics">
+                        <!-- Detailed metrics table -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Training Tab -->
+            <div class="tab-pane fade" id="training">
+                <h2 class="mb-4"><i class="bi bi-robot me-2"></i> Entrenamiento IA</h2>
+
+                <!-- Entrenamiento Interactivo -->
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-chat-dots me-2"></i> Probar y Entrenar</h5>
+                            <p class="text-muted">Escribe mensajes como lo haría un cliente. Si no hay respuesta configurada, puedes crear una al instante.</p>
+
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="train-message" placeholder="Ej: Hola, cuanto cuesta reparar un Casio?">
+                                <button class="btn btn-primary" onclick="trainTest()">
+                                    <i class="bi bi-search me-1"></i> Probar Local
+                                </button>
+                            </div>
+
+                            <div id="train-result"></div>
+
+                            <!-- Enviar prueba real por WhatsApp -->
+                            <div class="mt-3 p-3 border rounded" style="background: #f0f8ff;">
+                                <h6><i class="bi bi-whatsapp me-2"></i> Enviar Prueba Real por WhatsApp</h6>
+                                <p class="text-muted small">Envia un mensaje real al numero de WhatsApp para probar la respuesta automatica del bot.</p>
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">Numero</span>
+                                    <input type="text" class="form-control" id="whatsapp-test-number" placeholder="573123031988" value="573123031988">
+                                </div>
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">Mensaje</span>
+                                    <input type="text" class="form-control" id="whatsapp-test-text" placeholder="Escribe el mensaje a enviar...">
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="sendWhatsAppTest()">
+                                    <i class="bi bi-send me-1"></i> Enviar por WhatsApp
+                                </button>
+                                <div id="whatsapp-test-result" class="mt-2"></div>
+                            </div>
+
+                            <!-- Formulario rapido para crear respuesta -->
+                            <div id="quick-add-form" style="display:none;" class="mt-3 p-3 border rounded bg-light">
+                                <h6><i class="bi bi-plus-circle me-2"></i> Crear Respuesta Rapida</h6>
+                                <div class="mb-2">
+                                    <label class="form-label">Nombre</label>
+                                    <input type="text" class="form-control form-control-sm" id="quick-name" placeholder="Ej: Consulta Reparacion">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Intencion</label>
+                                    <select class="form-control form-control-sm" id="quick-intent">
+                                        <option value="saludo">Saludo</option>
+                                        <option value="despedida">Despedida</option>
+                                        <option value="bateria">Bateria</option>
+                                        <option value="horarios">Horarios</option>
+                                        <option value="ubicacion">Ubicacion</option>
+                                        <option value="consulta_precio">Consulta Precio</option>
+                                        <option value="servicios">Servicios</option>
+                                        <option value="consulta">Consulta General</option>
+                                        <option value="reparacion">Reparacion</option>
+                                        <option value="garantia">Garantia</option>
+                                        <option value="no_identificado">No Identificado</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Palabras clave (separadas por coma)</label>
+                                    <input type="text" class="form-control form-control-sm" id="quick-triggers" placeholder="reparar,arreglar,reparacion">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Texto de respuesta</label>
+                                    <textarea class="form-control form-control-sm" id="quick-response" rows="2" placeholder="Escriba la respuesta automatica..."></textarea>
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="quickAddResponse()">
+                                    <i class="bi bi-check-circle me-1"></i> Guardar Respuesta
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('quick-add-form').style.display='none'">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-bar-chart me-2"></i> Cobertura de Respuestas</h5>
+                            <div id="training-coverage">
+                                <p class="text-muted">Cargando analisis...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Entrenamiento por Lotes -->
+                <div class="stat-card mt-4">
+                    <h5><i class="bi bi-list-check me-2"></i> Entrenamiento por Lotes</h5>
+                    <p class="text-muted">Pega varios mensajes (uno por linea) para ver cuales tienen respuesta y cuales no.</p>
+
+                    <textarea class="form-control mb-3" id="batch-messages" rows="5" placeholder="Hola buenos dias&#10;Cuanto cuesta cambiar una bateria?&#10;Donde estan ubicados?&#10;Necesito reparar mi reloj Rolex&#10;Tienen garantia?"></textarea>
+                    <button class="btn btn-primary" onclick="batchTrainTest()">
+                        <i class="bi bi-play-circle me-1"></i> Analizar Lote
+                    </button>
+
+                    <div id="batch-results" class="mt-3"></div>
+                </div>
+
+                <!-- Historial de Entrenamiento -->
+                <div class="stat-card mt-4">
+                    <h5><i class="bi bi-clock-history me-2"></i> Resumen del Sistema</h5>
+                    <div id="training-summary">
+                        <p class="text-muted">Cargando...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Tab -->
+            <div class="tab-pane fade" id="test">
+                <h2 class="mb-4"><i class="bi bi-play-circle me-2"></i> Probar Respuestas</h2>
+                
+                <div class="test-area">
+                    <div class="mb-3">
+                        <label class="form-label">Escribe un mensaje para probar:</label>
+                        <textarea class="form-control" id="test-message" rows="3" placeholder="Ej: Hola, necesito cambiar la bateria de mi reloj"></textarea>
+                    </div>
+                    <button class="btn btn-primary" id="test-response-btn">
+                        <i class="bi bi-play-circle me-2"></i> Probar Respuesta
+                    </button>
+
+                    <div class="mt-4" id="test-result">
+                        <!-- Test result will appear here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Tab -->
+            <div class="tab-pane fade" id="export">
+                <h2 class="mb-4"><i class="bi bi-download me-2"></i> Exportar Datos</h2>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-chat-text me-2"></i> Mensajes</h5>
+                            <p class="text-muted">Exportar todos los mensajes recibidos</p>
+                            <button class="btn export-btn" id="export-messages">
+                                <i class="bi bi-download me-2"></i> Descargar Mensajes (JSON)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h5><i class="bi bi-reply me-2"></i> Respuestas</h5>
+                            <p class="text-muted">Exportar todas las respuestas configuradas</p>
+                            <button class="btn export-btn" id="export-responses">
+                                <i class="bi bi-download me-2"></i> Descargar Respuestas (JSON)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tunnel Tab -->
+            <div class="tab-pane fade" id="tunnel">
+                <h2 class="mb-4"><i class="bi bi-globe me-2"></i> Ngrok Tunnel Manager</h2>
+
+                <!-- Status + URL -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="stat-card tun-card">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">
+                                    <span class="tun-status-orb offline" id="tun-orb"></span>
+                                    <span class="ms-2" id="tun-status-text">Verificando...</span>
+                                </h5>
+                                <span class="badge bg-secondary" id="tun-pid-badge" style="font-size:.8rem">PID: ---</span>
+                            </div>
+
+                            <div class="tun-url-box mb-3" id="tun-url-box">
+                                <div class="data-stream" id="tun-data-stream"></div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span id="tun-url">Sin conexion</span>
+                                    <button class="btn btn-sm btn-outline-light ms-2" onclick="copyTunnelUrl()" id="tun-copy-btn" style="display:none">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center text-muted small">
+                                <i class="bi bi-arrow-right-circle me-1"></i>
+                                <span id="tun-addr">---</span>
+                                <span class="mx-2">|</span>
+                                <i class="bi bi-shield-lock me-1"></i>
+                                <span id="tun-proto">---</span>
+                                <span class="mx-2">|</span>
+                                <i class="bi bi-clock me-1"></i>
+                                <span id="tun-uptime">---</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="stat-card tun-card" style="animation-delay:.1s">
+                            <h5 class="mb-3"><i class="bi bi-activity me-2"></i> Metricas</h5>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="tun-metric">
+                                        <div class="tun-metric-val" id="tun-m-conns">0</div>
+                                        <div class="tun-metric-label">Conexiones</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="tun-metric">
+                                        <div class="tun-metric-val" id="tun-m-http">0</div>
+                                        <div class="tun-metric-label">HTTP Reqs</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="tun-metric">
+                                        <div class="tun-metric-val" id="tun-m-p50">--</div>
+                                        <div class="tun-metric-label">P50 ms</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="tun-metric">
+                                        <div class="tun-metric-val" id="tun-m-p90">--</div>
+                                        <div class="tun-metric-label">P90 ms</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="tun-metric">
+                                        <div class="tun-metric-val" id="tun-m-active">0</div>
+                                        <div class="tun-metric-label">Activas</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="stat-card tun-card" style="animation-delay:.2s">
+                            <h5 class="mb-3"><i class="bi bi-toggles me-2"></i> Control del Tunnel</h5>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-3">
+                                    <button class="tun-btn tun-btn-start w-100" onclick="ngrokAction('start')" id="btn-tun-start">
+                                        <i class="bi bi-play-fill me-1"></i> Start
+                                    </button>
+                                </div>
+                                <div class="col-3">
+                                    <button class="tun-btn tun-btn-stop w-100" onclick="ngrokAction('stop')" id="btn-tun-stop">
+                                        <i class="bi bi-stop-fill me-1"></i> Stop
+                                    </button>
+                                </div>
+                                <div class="col-3">
+                                    <button class="tun-btn tun-btn-restart w-100" onclick="ngrokAction('restart')" id="btn-tun-restart">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Restart
+                                    </button>
+                                </div>
+                                <div class="col-3">
+                                    <button class="tun-btn tun-btn-kill w-100" onclick="ngrokAction('kill')" id="btn-tun-kill">
+                                        <i class="bi bi-x-octagon-fill me-1"></i> Kill
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i class="bi bi-hdd-network me-1"></i> Puerto</span>
+                                <input type="number" class="form-control" id="tun-port" value="3000" min="1" max="65535">
+                                <span class="input-group-text text-muted">Target local</span>
+                            </div>
+
+                            <div id="tun-action-result"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="stat-card tun-card" style="animation-delay:.3s">
+                            <h5 class="mb-3"><i class="bi bi-key me-2"></i> Auth Token</h5>
+                            <div class="mb-2">
+                                <input type="password" class="form-control tun-key-input" id="tun-authtoken" placeholder="Ingresa tu authtoken de ngrok">
+                            </div>
+                            <div class="d-flex gap-2 mb-2">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleTokenVisibility()">
+                                    <i class="bi bi-eye" id="tun-eye-icon"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary flex-grow-1" onclick="saveAuthToken()">
+                                    <i class="bi bi-save me-1"></i> Guardar Token
+                                </button>
+                            </div>
+                            <div class="text-muted small" id="tun-token-status">---</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Log -->
+                <div class="stat-card tun-card" style="animation-delay:.4s">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="bi bi-terminal me-2"></i> Log en Vivo</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="loadTunnelLog()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="tun-log" id="tun-log">
+                        <span class="text-muted">Cargando log...</span>
+                    </div>
+                </div>
+            </div>
+        <!-- ===== IA / OpenClaw Tab ===== -->
+        <div class="tab-pane fade" id="ai-management">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-cpu me-2 text-primary"></i> IA / OpenClaw</h3>
+                <div id="ai-global-status"></div>
+            </div>
+
+            <!-- WIZARD (mostrado cuando no está instalado) -->
+            <div id="ai-wizard">
+                <!-- Pasos -->
+                <div class="wizard-steps" id="wizard-steps-bar">
+                    <div class="wizard-step active" id="ws-1">1</div>
+                    <div class="wizard-step-connector" id="wc-1"></div>
+                    <div class="wizard-step pending" id="ws-2">2</div>
+                    <div class="wizard-step-connector" id="wc-2"></div>
+                    <div class="wizard-step pending" id="ws-3">3</div>
+                    <div class="wizard-step-connector" id="wc-3"></div>
+                    <div class="wizard-step pending" id="ws-4">4</div>
+                    <div class="wizard-step-connector" id="wc-4"></div>
+                    <div class="wizard-step pending" id="ws-5">5</div>
+                    <div class="wizard-step-connector" id="wc-5"></div>
+                    <div class="wizard-step pending" id="ws-6">6</div>
+                </div>
+
+                <!-- Paso 1: Bienvenida -->
+                <div class="wizard-pane active" id="wizard-step-1">
+                    <div class="card border-0 shadow-sm text-center p-5">
+                        <div style="font-size:4rem;margin-bottom:20px">🤖</div>
+                        <h2 class="mb-3">Instalar Inteligencia Artificial</h2>
+                        <p class="text-muted mb-4" style="max-width:500px;margin:0 auto 30px">
+                            Configura un cerebro de IA que revisará, responderá y aprenderá de los mensajes WhatsApp de tus clientes. Funciona como agente autónomo de comunicación.
+                        </p>
+                        <ul class="list-unstyled text-start d-inline-block mb-4">
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Responde mensajes en lenguaje natural</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Soporta Anthropic, OpenAI, DeepSeek y modelos locales</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Aprende nuevas respuestas mediante conversación</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Fallback automático al bot de reglas</li>
+                        </ul>
+                        <button class="btn btn-primary btn-lg px-5" onclick="wizardNext()">
+                            <i class="bi bi-arrow-right me-2"></i> Comenzar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Paso 2: Selección de proveedores -->
+                <div class="wizard-pane" id="wizard-step-2">
+                    <div class="card border-0 shadow-sm p-4">
+                        <h4 class="mb-1">Selecciona los proveedores de IA</h4>
+                        <p class="text-muted mb-4">Puedes instalar uno o varios cerebros y cambiar entre ellos.</p>
+                        <div class="row g-3" id="provider-cards">
+                            <div class="col-md-6 col-lg-3">
+                                <div class="ai-provider-card" onclick="toggleProvider('anthropic',this)" data-provider="anthropic">
+                                    <div class="provider-icon">⚡</div>
+                                    <h6 class="mb-1">Anthropic / Claude</h6>
+                                    <small class="text-muted">Claude Opus, Sonnet, Haiku. Alta calidad, multilingüe.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="ai-provider-card" onclick="toggleProvider('openai',this)" data-provider="openai">
+                                    <div class="provider-icon">✨</div>
+                                    <h6 class="mb-1">OpenAI</h6>
+                                    <small class="text-muted">GPT-4o, GPT-4o Mini. Ampliamente reconocido.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="ai-provider-card" onclick="toggleProvider('deepseek',this)" data-provider="deepseek">
+                                    <div class="provider-icon">🌊</div>
+                                    <h6 class="mb-1">DeepSeek</h6>
+                                    <small class="text-muted">DeepSeek Chat y Reasoner. Económico y potente.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="ai-provider-card" onclick="toggleProvider('ollama',this)" data-provider="ollama">
+                                    <div class="provider-icon">💻</div>
+                                    <h6 class="mb-1">Ollama (Local)</h6>
+                                    <small class="text-muted">Qwen, Llama, Mistral. Sin costos, privacidad total.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-4">
+                            <button class="btn btn-outline-secondary" onclick="wizardPrev()"><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                            <button class="btn btn-primary" onclick="wizardNext()">Siguiente <i class="bi bi-arrow-right ms-1"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paso 3: Configuración por proveedor -->
+                <div class="wizard-pane" id="wizard-step-3">
+                    <div class="card border-0 shadow-sm p-4">
+                        <h4 class="mb-1">Configura tus proveedores</h4>
+                        <p class="text-muted mb-4">Ingresa las credenciales para cada proveedor seleccionado.</p>
+                        <div id="provider-config-forms"></div>
+                        <div class="d-flex justify-content-between mt-4">
+                            <button class="btn btn-outline-secondary" onclick="wizardPrev()"><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                            <button class="btn btn-primary" onclick="wizardNext()">Siguiente <i class="bi bi-arrow-right ms-1"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paso 4: Selección de cerebro activo -->
+                <div class="wizard-pane" id="wizard-step-4">
+                    <div class="card border-0 shadow-sm p-4">
+                        <h4 class="mb-1">Elige el cerebro principal</h4>
+                        <p class="text-muted mb-4">El cerebro activo será el que responda los mensajes de WhatsApp.</p>
+                        <div id="brain-selector-list"></div>
+                        <div class="d-flex justify-content-between mt-4">
+                            <button class="btn btn-outline-secondary" onclick="wizardPrev()"><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                            <button class="btn btn-primary" onclick="wizardNext()">Siguiente <i class="bi bi-arrow-right ms-1"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paso 5: System prompt -->
+                <div class="wizard-pane" id="wizard-step-5">
+                    <div class="card border-0 shadow-sm p-4">
+                        <h4 class="mb-1">Instrucciones del agente</h4>
+                        <p class="text-muted mb-3">Define el rol y comportamiento de la IA. Puedes editarlo después.</p>
+                        <textarea id="wizard-system-prompt" class="form-control" rows="8" style="font-size:.9rem"></textarea>
+                        <small class="text-muted mt-2 d-block">Usa {nombre} para insertar el nombre del cliente en las respuestas.</small>
+                        <div class="d-flex justify-content-between mt-4">
+                            <button class="btn btn-outline-secondary" onclick="wizardPrev()"><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                            <button class="btn btn-primary" onclick="wizardNext()">Siguiente <i class="bi bi-arrow-right ms-1"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paso 6: Confirmación -->
+                <div class="wizard-pane" id="wizard-step-6">
+                    <div class="card border-0 shadow-sm p-4">
+                        <h4 class="mb-3"><i class="bi bi-check2-circle text-success me-2"></i> Listo para instalar</h4>
+                        <div id="wizard-summary" class="mb-4"></div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-outline-secondary" onclick="wizardPrev()"><i class="bi bi-arrow-left me-1"></i> Anterior</button>
+                            <button class="btn btn-success btn-lg px-5" onclick="wizardInstall()" id="btn-wizard-install">
+                                <i class="bi bi-cpu me-2"></i> Instalar IA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL DE CONTROL (mostrado post-instalación) -->
+            <div id="ai-control-panel" style="display:none">
+                <div class="row g-4">
+                    <!-- Columna izquierda: controles -->
+                    <div class="col-md-8">
+                        <!-- Estado y toggle -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                <div>
+                                    <div id="ai-status-pill" class="ai-status-pill off">
+                                        <span class="ai-dot"></span> <span id="ai-status-text">IA Desactivada</span>
+                                    </div>
+                                    <div class="mt-2 text-muted" style="font-size:.85rem">
+                                        Cerebro activo: <strong id="ai-active-brain-label">—</strong>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch" style="transform:scale(1.4);transform-origin:right">
+                                    <input class="form-check-input" type="checkbox" id="ai-toggle-switch" onchange="toggleAI(this.checked)">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selector de cerebro -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-transparent"><strong><i class="bi bi-cpu me-2"></i>Cambiar Cerebro</strong></div>
+                            <div class="card-body">
+                                <div id="brain-switcher-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- System prompt -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                                <strong><i class="bi bi-file-text me-2"></i>Instrucciones del Agente</strong>
+                                <button class="btn btn-sm btn-success" onclick="saveSystemPrompt()">
+                                    <i class="bi bi-check2 me-1"></i>Guardar
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <textarea id="ai-system-prompt-editor" class="form-control" rows="6" style="font-size:.9rem"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna derecha: proveedores -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                                <strong><i class="bi bi-boxes me-2"></i>Proveedores</strong>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showAddProviderWizard()">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                            <div class="card-body p-2" id="providers-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat de Entrenamiento -->
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-header bg-transparent">
+                        <strong><i class="bi bi-chat-dots me-2"></i>Chat de Entrenamiento</strong>
+                        <small class="text-muted ms-2">Habla con la IA para agregar, editar o eliminar respuestas</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="ai-chat-area" id="ai-chat-area"></div>
+                        <div class="p-3 border-top d-flex gap-2">
+                            <input type="text" id="ai-chat-input" class="form-control" placeholder='Ej: "Cuando pregunten por garantía, responde: Ofrecemos 6 meses..."' onkeydown="if(event.key==='Enter')sendAIChatMessage()">
+                            <button class="btn btn-primary px-4" onclick="sendAIChatMessage()">
+                                <i class="bi bi-send"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Integraciones API -->
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <strong><i class="bi bi-plug me-2"></i>Integraciones de API</strong>
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">
+                            <i class="bi bi-plus me-1"></i>Agregar
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 int-table">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-3">Nombre</th>
+                                        <th>URL Base</th>
+                                        <th>Auth</th>
+                                        <th>Categoría</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="integrations-table-body">
+                                    <tr><td colspan="5" class="text-center text-muted py-4">Sin integraciones configuradas</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reglas de Seguridad -->
+                <div class="card border-0 shadow-sm mt-4 mb-4">
+                    <div class="card-header bg-transparent"><strong><i class="bi bi-shield-lock me-2"></i>Reglas de Seguridad</strong></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="sec-require-identity" checked>
+                                    <label class="form-check-label">Requerir verificación de identidad antes de datos privados</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Límite peticiones por minuto</label>
+                                <input type="number" id="sec-rate-limit" class="form-control" value="10" min="1" max="100">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" id="sec-confirm-private" checked>
+                                    <label class="form-check-label">Confirmar antes de enviar datos restringidos</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary mt-3" onclick="saveSecurityRules()">Guardar reglas</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN tab IA -->
+
+        <!-- ===== Asesores Tab ===== -->
+        <div class="tab-pane fade" id="advisors">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-person-badge me-2 text-primary"></i> Asesores</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAdvisorModal">
+                    <i class="bi bi-plus-circle me-1"></i> Agregar Asesor
+                </button>
+            </div>
+
+            <!-- Asesores registrados -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent"><strong><i class="bi bi-people me-2"></i>Asesores Registrados</strong></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr style="background:#f8f9fa">
+                                    <th class="ps-3">Nombre</th>
+                                    <th>Teléfono</th>
+                                    <th>Roles</th>
+                                    <th>Estado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="advisors-table-body">
+                                <tr><td colspan="5" class="text-center text-muted py-4">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sesiones activas -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <strong><i class="bi bi-chat-dots me-2"></i>Sesiones Activas</strong>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadActiveSessions()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr style="background:#f8f9fa">
+                                    <th class="ps-3">Asesor</th>
+                                    <th>Cliente</th>
+                                    <th>Consulta</th>
+                                    <th>Inicio</th>
+                                    <th>Última actividad</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="active-sessions-table-body">
+                                <tr><td colspan="6" class="text-center text-muted py-4">Sin sesiones activas</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historial de sesiones -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent"><strong><i class="bi bi-archive me-2"></i>Historial de Sesiones (Auditoría)</strong></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr style="background:#f8f9fa">
+                                    <th class="ps-3">Asesor</th>
+                                    <th>Cliente (Nombre)</th>
+                                    <th>Consulta</th>
+                                    <th>Inicio</th>
+                                    <th>Fin</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="session-history-table-body">
+                                <tr><td colspan="6" class="text-center text-muted py-4">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN tab Asesores -->
+
+        <!-- SISTEMA TAB -->
+        <div class="tab-pane fade" id="system-status">
+            <h3><i class="bi bi-activity me-2 text-success"></i> Estado del Sistema</h3>
+            <p class="text-muted mb-4">Control en tiempo real de todos los servicios</p>
+
+            <!-- Botones de control global -->
+            <div class="mb-4">
+                <button class="btn btn-success me-2" onclick="startAllServices()"><i class="bi bi-play-fill me-1"></i> Iniciar Todo</button>
+                <button class="btn btn-danger me-2" onclick="stopAllServices()"><i class="bi bi-stop-fill me-1"></i> Detener Todo</button>
+                <button class="btn btn-info" onclick="loadSystemStatus()"><i class="bi bi-arrow-clockwise me-1"></i> Actualizar</button>
+            </div>
+
+            <!-- Tarjetas de servicios -->
+            <div class="row g-3" id="services-grid">
+                <!-- Cargado por JS -->
+            </div>
+        </div>
+
+        <!-- CONFIGURACIÓN TAB -->
+        <div class="tab-pane fade" id="config">
+            <h3><i class="bi bi-gear me-2"></i> Configuración del Sistema</h3>
+            <p class="text-muted mb-4">Edita los parámetros de funcionamiento. Los cambios requieren reinicio de servicios.</p>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="accordion" id="configAccordion">
+                        <!-- 1. Meta / Facebook -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#metaSection">
+                                    <i class="bi bi-facebook me-2"></i>Meta / Facebook App
+                                </button>
+                            </h2>
+                            <div id="metaSection" class="accordion-collapse collapse show" data-bs-parent="#configAccordion">
+                                <div class="accordion-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">App ID</label>
+                                        <input type="text" class="form-control config-input" id="config-M4D_APP_ID">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">App Secret <i class="bi bi-eye-slash toggle-secret ms-2" style="cursor:pointer" onclick="toggleSecret(this, 'config-M4D_APP_SECRET')"></i></label>
+                                        <input type="password" class="form-control config-input" id="config-M4D_APP_SECRET">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Phone Number ID</label>
+                                        <input type="text" class="form-control config-input" id="config-WA_PHONE_NUMBER_ID">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Business Account ID</label>
+                                        <input type="text" class="form-control config-input" id="config-WA_BUSINESS_ACCOUNT_ID">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Access Token <i class="bi bi-eye-slash toggle-secret ms-2" style="cursor:pointer" onclick="toggleSecret(this, 'config-CLOUD_API_ACCESS_TOKEN')"></i></label>
+                                        <textarea class="form-control config-input" id="config-CLOUD_API_ACCESS_TOKEN" rows="3"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">API Version</label>
+                                        <input type="text" class="form-control config-input" id="config-CLOUD_API_VERSION" value="v19.0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Número WhatsApp Business</label>
+                                        <input type="text" class="form-control config-input" id="config-WHATSAPP_BUSINESS_NUMBER" placeholder="+573123080083">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Webhook -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#webhookSection">
+                                    <i class="bi bi-arrow-left-right me-2"></i>Webhook
+                                </button>
+                            </h2>
+                            <div id="webhookSection" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                                <div class="accordion-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Endpoint</label>
+                                        <input type="text" class="form-control config-input" id="config-WEBHOOK_ENDPOINT">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Token de Verificación <i class="bi bi-eye-slash toggle-secret ms-2" style="cursor:pointer" onclick="toggleSecret(this, 'config-WEBHOOK_VERIFICATION_TOKEN')"></i></label>
+                                        <input type="password" class="form-control config-input" id="config-WEBHOOK_VERIFICATION_TOKEN">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Ngrok -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ngrokSection">
+                                    <i class="bi bi-globe me-2"></i>Ngrok
+                                </button>
+                            </h2>
+                            <div id="ngrokSection" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                                <div class="accordion-body">
+                                    <div class="alert alert-info"><i class="bi bi-info-circle me-1"></i>El token se usa al iniciar ngrok desde el panel Sistema.</div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Auth Token <i class="bi bi-eye-slash toggle-secret ms-2" style="cursor:pointer" onclick="toggleSecret(this, 'config-NGROK_AUTH_TOKEN')"></i></label>
+                                        <input type="password" class="form-control config-input" id="config-NGROK_AUTH_TOKEN">
+                                        <small class="text-muted d-block mt-2">Obtén tu token en <a href="https://dashboard.ngrok.com/auth/your-authtoken" target="_blank">dashboard.ngrok.com</a></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Servidor -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#serverSection">
+                                    <i class="bi bi-server me-2"></i>Servidor
+                                </button>
+                            </h2>
+                            <div id="serverSection" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                                <div class="accordion-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Puerto Middleware</label>
+                                        <input type="number" class="form-control config-input" id="config-PORT" min="1000" max="65535">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. OpenClaw (opcional) -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#openclawSection">
+                                    <i class="bi bi-plug me-2"></i>OpenClaw (Opcional)
+                                </button>
+                            </h2>
+                            <div id="openclawSection" class="accordion-collapse collapse" data-bs-parent="#configAccordion">
+                                <div class="accordion-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Gateway URL</label>
+                                        <input type="url" class="form-control config-input" id="config-OPENCLAW_GATEWAY_URL">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">API Token <i class="bi bi-eye-slash toggle-secret ms-2" style="cursor:pointer" onclick="toggleSecret(this, 'config-OPENCLAW_API_TOKEN')"></i></label>
+                                        <input type="password" class="form-control config-input" id="config-OPENCLAW_API_TOKEN">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button class="btn btn-primary me-2" onclick="saveConfig()"><i class="bi bi-check-circle me-1"></i> Guardar Configuración</button>
+                        <button class="btn btn-outline-secondary" onclick="reloadConfig()"><i class="bi bi-arrow-clockwise me-1"></i> Recargar</button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-info bg-light">
+                        <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i>Información</div>
+                        <div class="card-body">
+                            <h6>Credenciales Sensibles</h6>
+                            <p class="small text-muted">Los campos con ícono de ojo contienen información sensible. NUNCA compartas estos datos en chats o redes públicas.</p>
+                            <hr>
+                            <h6>Reinicio requerido</h6>
+                            <p class="small text-muted">Algunos cambios requieren reiniciar los servicios. Usa el panel <strong>Sistema</strong> para reiniciar.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Agregar Integración -->
+    <div class="modal fade" id="addIntegrationModal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plug me-2"></i>Agregar Integración de API</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="int-id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" id="int-name" class="form-control" placeholder="Ej: Sistema de inventario">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">URL Base</label>
+                            <input type="url" id="int-url" class="form-control" placeholder="https://api.ejemplo.com">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo de autenticación</label>
+                            <select id="int-auth-type" class="form-select" onchange="toggleIntAuthField()">
+                                <option value="none">Sin autenticación</option>
+                                <option value="api-key">API Key</option>
+                                <option value="bearer">Bearer Token</option>
+                                <option value="basic">Basic Auth</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4" id="int-auth-value-group" style="display:none">
+                            <label class="form-label">Credencial</label>
+                            <input type="password" id="int-auth-value" class="form-control" placeholder="Token o API key">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Categoría de datos</label>
+                            <select id="int-category" class="form-select">
+                                <option value="public">Público</option>
+                                <option value="private">Privado</option>
+                                <option value="restricted">Restringido</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea id="int-description" class="form-control" rows="2" placeholder="Qué hace esta integración..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveIntegration()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Agregar/Editar Respuesta -->
+    <div class="modal fade" id="addResponseModal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar/Editar Respuesta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="response-form">
+                        <input type="hidden" id="edit-response-id">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="edit-response-name" required placeholder="Ej: Saludo Inicial">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Intencion</label>
+                            <select class="form-control" id="edit-response-intent">
+                                <option value="saludo">Saludo</option>
+                                <option value="despedida">Despedida</option>
+                                <option value="bateria">Bateria</option>
+                                <option value="horarios">Horarios</option>
+                                <option value="ubicacion">Ubicacion</option>
+                                <option value="consulta_precio">Consulta Precio</option>
+                                <option value="consulta_estado">Consulta Estado</option>
+                                <option value="servicios">Servicios</option>
+                                <option value="consulta">Consulta General</option>
+                                <option value="no_identificado">No Identificado</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Palabras clave (separadas por coma)</label>
+                            <input type="text" class="form-control" id="edit-response-triggers" placeholder="hola,buenos dias,buenas tardes">
+                            <small class="text-muted">El mensaje debe contener alguna de estas palabras para activar la respuesta</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Texto de respuesta</label>
+                            <textarea class="form-control" id="edit-response-text" rows="3" required placeholder="Escribe la respuesta automatica aqui..."></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="edit-response-active" checked>
+                                    <label class="form-check-label">Activa</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Prioridad (1 = mas alta)</label>
+                                    <input type="number" class="form-control" id="edit-response-priority" value="1" min="1" max="99">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Contexto para la IA -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-info-circle me-1"></i>Contexto para la IA</label>
+                            <textarea class="form-control" id="edit-response-ai-context" rows="3" placeholder="Ej: Cambio de batería cuesta $10.000 para Casio, $15.000 para Citizen. Horario: Lun-Vie 9am-7pm. Ubicación: CC Milla de Oro local 203."></textarea>
+                            <small class="text-muted">Información que la IA usará para responder sin inventar. Incluye precios, horarios, datos específicos.</small>
+                        </div>
+                        <!-- Follow-ups / Flujo de conversación -->
+                        <hr>
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-diagram-3 me-1"></i>Flujo de conversación (follow-ups)</label>
+                            <small class="text-muted d-block mb-2">Agrega sub-preguntas consecutivas. Sin follow-ups la conversación termina en esta respuesta.</small>
+                            <div id="follow-ups-container"></div>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addFollowUpStep()">
+                                <i class="bi bi-plus-circle me-1"></i>Agregar paso
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveNewResponse()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Agregar Asesor -->
+    <div class="modal fade" id="addAdvisorModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i>Agregar/Editar Asesor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="advisor-edit-id">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre completo</label>
+                        <input type="text" id="advisor-name" class="form-control" placeholder="Ej: Juan García" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Número de WhatsApp</label>
+                        <input type="text" id="advisor-phone" class="form-control" placeholder="573001234567" required>
+                        <small class="text-muted">Incluir código de país (ej: 57 para Colombia)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Roles asignados</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="role-bateria" value="bateria">
+                            <label class="form-check-label">Cambio de Batería</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="role-reparacion" value="reparacion">
+                            <label class="form-check-label">Reparación</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="role-joyas" value="joyas">
+                            <label class="form-check-label">Joyería</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="role-ventas" value="ventas">
+                            <label class="form-check-label">Ventas</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="role-general" value="general" checked>
+                            <label class="form-check-label">General</label>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="advisor-active" checked>
+                        <label class="form-check-label">Asesor activo</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAdvisor()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Export buttons
+        document.getElementById('export-messages').addEventListener('click', async function() {
+            try {
+                const resp = await fetch('/api/messages');
+                const data = await resp.json();
+                downloadJSON(data.messages || data, 'mensajes');
+            } catch(e) { alert('Error exportando mensajes'); }
+        });
+
+        document.getElementById('export-responses').addEventListener('click', async function() {
+            try {
+                const resp = await fetch('/api/responses');
+                const data = await resp.json();
+                downloadJSON(data, 'respuestas');
+            } catch(e) { alert('Error exportando respuestas'); }
+        });
+
+        function downloadJSON(data, name) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name + '_' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Edit response
+        function editResponse(id) {
+            fetch('/api/responses').then(r => r.json()).then(responses => {
+                const resp = responses.find(r => r.id === id);
+                if (resp) {
+                    document.getElementById('edit-response-id').value = resp.id;
+                    document.getElementById('edit-response-name').value = resp.name || '';
+                    document.getElementById('edit-response-intent').value = resp.intent || 'saludo';
+                    document.getElementById('edit-response-triggers').value = resp.trigger_words || '';
+                    document.getElementById('edit-response-text').value = resp.response_text || '';
+                    document.getElementById('edit-response-active').checked = resp.is_active !== false;
+                    document.getElementById('edit-response-priority').value = resp.priority || 1;
+                    document.getElementById('edit-response-ai-context').value = resp.ai_context || '';
+                    currentFollowUps = JSON.parse(JSON.stringify(resp.follow_ups || []));
+                    renderFollowUpEditor();
+                    new bootstrap.Modal(document.getElementById('addResponseModal')).show();
+                }
+            });
+        }
+
+        // Toggle response active/inactive
+        function toggleResponse(id, currentState) {
+            fetch('/api/responses').then(r => r.json()).then(responses => {
+                const idx = responses.findIndex(r => r.id === id);
+                if (idx >= 0) {
+                    responses[idx].is_active = !currentState;
+                    fetch('/api/save-responses', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ responses })
+                    }).then(() => loadResponses());
+                }
+            });
+        }
+
+        // Delete response
+        function deleteResponse(id) {
+            if (!confirm('Seguro que quieres eliminar esta respuesta?')) return;
+            fetch('/api/responses').then(r => r.json()).then(responses => {
+                const filtered = responses.filter(r => r.id !== id);
+                fetch('/api/save-responses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ responses: filtered })
+                }).then(() => loadResponses());
+            });
+        }
+
+        // Save new/edited response
+        function saveNewResponse() {
+            const id = document.getElementById('edit-response-id').value;
+            collectFollowUps();
+            const newResp = {
+                id: id ? parseInt(id) : Date.now(),
+                name: document.getElementById('edit-response-name').value,
+                intent: document.getElementById('edit-response-intent').value,
+                trigger_words: document.getElementById('edit-response-triggers').value,
+                response_text: document.getElementById('edit-response-text').value,
+                is_active: document.getElementById('edit-response-active').checked,
+                priority: parseInt(document.getElementById('edit-response-priority').value) || 1,
+                ai_context: document.getElementById('edit-response-ai-context').value,
+                follow_ups: currentFollowUps,
+                use_count: 0,
+                success_rate: 100
+            };
+
+            fetch('/api/responses').then(r => r.json()).then(responses => {
+                if (id) {
+                    const idx = responses.findIndex(r => r.id === parseInt(id));
+                    if (idx >= 0) {
+                        newResp.use_count = responses[idx].use_count || 0;
+                        responses[idx] = newResp;
+                    } else {
+                        responses.push(newResp);
+                    }
+                } else {
+                    responses.push(newResp);
+                }
+
+                fetch('/api/save-responses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ responses })
+                }).then(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('addResponseModal')).hide();
+                    document.getElementById('edit-response-id').value = '';
+                    document.getElementById('response-form').reset();
+                    loadResponses();
+                    loadDashboard();
+                });
+            });
+        }
+
+        // Reset modal when opening for new response
+        document.getElementById('addResponseModal').addEventListener('show.bs.modal', function(e) {
+            if (!document.getElementById('edit-response-id').value) {
+                currentFollowUps = [];
+                renderFollowUpEditor();
+                document.getElementById('response-form').reset();
+                document.getElementById('edit-response-active').checked = true;
+                document.getElementById('edit-response-priority').value = '1';
+                document.getElementById('edit-response-ai-context').value = '';
+            }
+        });
+
+        // View message detail
+        function viewMessage(id) {
+            alert('Mensaje ID: ' + id);
+        }
+
+        function resendResponse(id) {
+            alert('Re-enviar respuesta para mensaje ID: ' + id);
+        }
+    </script>
+</body>
+</html>
