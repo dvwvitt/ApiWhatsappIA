@@ -22,3 +22,6 @@ webhook-history.json
 # Sistema
 .DS_Store
 *.tmp
+
+# Claude Code
+.claude/
