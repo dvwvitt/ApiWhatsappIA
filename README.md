@@ -101,7 +101,7 @@ whatsapp-business-middleware/
 
 ## Flujo de mensajes
 
-1. Un cliente envia un mensaje a WhatsApp Business (+573123080083)
+1. Un cliente envia un mensaje a WhatsApp Business (numero configurado en `.env`)
 2. Meta envia el webhook al Middleware (puerto 3000)
 3. El Middleware reenvia al Webhook Simple (puerto 5678) para analisis
 4. El Webhook Simple detecta la intencion (saludo, bateria, precio, etc.)
