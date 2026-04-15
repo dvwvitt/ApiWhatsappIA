@@ -378,6 +378,41 @@ app.get('/api/conversations/:phoneNumber/export', (req, res) => {
     }
 });
 
+// Marcar una conversación como leída
+app.post('/api/mark-conversation-read', (req, res) => {
+    try {
+        const { phoneNumber } = req.body;
+
+        if (!phoneNumber) {
+            return res.status(400).json({ error: 'phoneNumber requerido' });
+        }
+
+        const messages = loadMessages();
+        let markedCount = 0;
+
+        // Marcar todos los mensajes de esta conversación como leídos
+        messages.forEach(msg => {
+            if (msg.from_number === phoneNumber && !msg.is_read) {
+                msg.is_read = true;
+                markedCount++;
+            }
+        });
+
+        // Guardar mensajes actualizados
+        fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2), 'utf8');
+
+        res.json({
+            success: true,
+            marked_count: markedCount,
+            phoneNumber: phoneNumber
+        });
+
+    } catch (error) {
+        console.error('Error marcando conversación como leída:', error);
+        res.status(500).json({ error: 'Error procesando solicitud' });
+    }
+});
+
 // Endpoint de estado
 app.get('/api/status', (req, res) => {
     const messages = loadMessages();
