@@ -578,6 +578,46 @@ function handleAdvisorMessage(text, from) {
   const activeSession = loadSessions().find(s => s.status === 'active' && s.advisor_phone === from);
 
   if (!activeSession) {
+    const cmd = text.trim().toLowerCase();
+
+    // Comando /on — ponerse disponible
+    if (cmd === '/on') {
+      const advisors = loadAdvisors();
+      const advIdx = advisors.findIndex(a => a.phone === from);
+      if (advIdx !== -1) {
+        advisors[advIdx].is_available = true;
+        advisors[advIdx].last_available_at = new Date().toISOString();
+        saveAdvisors(advisors);
+        console.log(`✅ Asesor ${advisors[advIdx].name} (${from}) ahora DISPONIBLE`);
+        processQueue();
+      }
+      return {
+        intent: 'advisor_on',
+        action: 'auto_response',
+        response: '✅ Estás *disponible*. Te asignaremos clientes automáticamente.\n\nEscribe */off* para desconectarte.',
+        sendAutoReply: true,
+        confidence: 1
+      };
+    }
+
+    // Comando /off — ponerse no disponible
+    if (cmd === '/off') {
+      const advisors = loadAdvisors();
+      const advIdx = advisors.findIndex(a => a.phone === from);
+      if (advIdx !== -1) {
+        advisors[advIdx].is_available = false;
+        saveAdvisors(advisors);
+        console.log(`🔴 Asesor ${advisors[advIdx].name} (${from}) ahora NO DISPONIBLE`);
+      }
+      return {
+        intent: 'advisor_off',
+        action: 'auto_response',
+        response: '🔴 *No disponible*. No recibirás nuevos clientes.\n\nEscribe */on* para volver a conectarte.',
+        sendAutoReply: true,
+        confidence: 1
+      };
+    }
+
     if (text.trim() === '/iniciar') {
       setConversationState(from, { type: 'advisor_waiting_phone' });
       return {
@@ -647,7 +687,7 @@ function handleAdvisorMessage(text, from) {
     return {
       intent: 'advisor_idle',
       action: 'auto_response',
-      response: 'No tienes sesión activa. Escribe */iniciar* para comenzar.',
+      response: '📋 *Comandos disponibles:*\n\n*/on* — Ponerte disponible\n*/off* — Ponerte no disponible\n*/iniciar* — Iniciar sesión manual\n*/terminar* — Cerrar sesión activa',
       sendAutoReply: true,
       confidence: 1
     };
