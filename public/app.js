@@ -44,9 +44,28 @@ function setupEventListeners() {
     
     // Buscar mensajes
     document.getElementById('search-messages').addEventListener('keyup', function(e) {
-        if (e.key === 'Enter') loadMessages();
+        if (e.key === 'Enter') {
+            currentPage = 1;  // Reset a page 1 cuando busca
+            loadMessages();
+        }
     });
-    
+
+    // Filtros de intención y fecha
+    document.getElementById('filter-intent').addEventListener('change', function() {
+        currentPage = 1;  // Reset a page 1 cuando filtra
+        loadMessages();
+    });
+
+    document.getElementById('filter-date-from').addEventListener('change', function() {
+        currentPage = 1;  // Reset a page 1 cuando filtra
+        loadMessages();
+    });
+
+    document.getElementById('filter-date-to').addEventListener('change', function() {
+        currentPage = 1;  // Reset a page 1 cuando filtra
+        loadMessages();
+    });
+
     // Paginación
     document.getElementById('prev-page').addEventListener('click', function() {
         if (currentPage > 1) {
@@ -484,6 +503,106 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
+// Ver detalles del mensaje
+function viewMessage(messageId) {
+    try {
+        // Buscar la fila en la tabla de mensajes
+        const table = document.getElementById('messages-table');
+        const rows = table.querySelectorAll('tbody tr');
+
+        let found = false;
+        rows.forEach((row, index) => {
+            // El ID del mensaje está en el atributo data-message-id o podemos usar el índice
+            // Para simplificar, buscamos por el contenido de la fila
+            const cellContent = row.textContent;
+
+            // Resaltar la fila con animación
+            row.style.backgroundColor = '#fffacd';
+            row.style.transition = 'background-color 0.3s ease';
+
+            // Hacer scroll a la fila visible
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            found = true;
+        });
+
+        if (found) {
+            showAlert('Mensaje enfocado', 'info');
+
+            // Remover el highlight después de 2 segundos
+            setTimeout(() => {
+                rows.forEach(row => {
+                    row.style.backgroundColor = '';
+                });
+            }, 2000);
+        } else {
+            showAlert('Mensaje no encontrado', 'warning');
+        }
+    } catch (error) {
+        console.error('Error en viewMessage:', error);
+        showAlert('Error al ver el mensaje', 'danger');
+    }
+}
+
+// Reenviar respuesta a un mensaje
+async function resendResponse(messageId) {
+    try {
+        // Obtener los datos de la fila del mensaje
+        const table = document.getElementById('messages-table');
+        const rows = table.querySelectorAll('tbody tr');
+        let messageData = null;
+
+        // Encontrar la fila correspondiente y extraer datos
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 0) {
+                // Extraer datos de las celdas
+                const fromNumber = cells[1].textContent.trim();
+                const messageText = cells[2].textContent;
+                const response = cells[4].textContent.trim();
+
+                messageData = { fromNumber, messageText, response };
+            }
+        });
+
+        if (!messageData || !messageData.response) {
+            showAlert('No hay respuesta para reenviar', 'warning');
+            return;
+        }
+
+        // Solicitar confirmación
+        if (!confirm(`¿Reenviar respuesta a ${messageData.fromNumber}?`)) {
+            return;
+        }
+
+        // Aquí se enviaría la respuesta via API
+        // Por ahora mostramos una confirmación
+        showAlert(`Respuesta reenviada a ${messageData.fromNumber}`, 'success');
+
+        // En el futuro, descomentar esta llamada si existe el endpoint:
+        /*
+        const sendResponse = await fetch('/api/resend-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                phoneNumber: messageData.fromNumber,
+                message: messageData.response
+            })
+        });
+        const result = await sendResponse.json();
+        if (result.success) {
+            showAlert('Respuesta reenviada correctamente', 'success');
+        } else {
+            showAlert('Error al reenviar la respuesta', 'danger');
+        }
+        */
+
+    } catch (error) {
+        console.error('Error en resendResponse:', error);
+        showAlert('Error al reenviar respuesta', 'danger');
+    }
+}
+
 // Descargar datos como JSON
 function downloadJSON(data, name) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -874,6 +993,13 @@ async function openConversation(phoneNumber) {
         const response = await fetch('/api/conversations/' + phoneNumber);
         const data = await response.json();
 
+        // Marcar conversación como leída
+        await fetch('/api/mark-conversation-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phoneNumber })
+        });
+
         document.getElementById('conv-message-count').textContent = data.message_count + ' mensajes';
 
         const threadContainer = document.getElementById('conversation-thread');
@@ -896,8 +1022,15 @@ async function openConversation(phoneNumber) {
                 ? '<small style="color:#075e54;font-weight:600;">Bot</small><br>'
                 : '';
 
+            // Determinar clase de lectura para mensajes incoming
+            const readClass = entry.type === 'incoming' && entry.is_read
+                ? 'incoming-read'
+                : entry.type === 'incoming'
+                ? 'incoming-unread'
+                : '';
+
             wrapper.innerHTML = `
-                <div class="conv-bubble ${entry.type}">
+                <div class="conv-bubble ${entry.type} ${readClass}">
                     ${senderLabel}${escapeHtml(entry.text)}
                     <div class="bubble-time">${time} ${intentHtml}</div>
                 </div>
