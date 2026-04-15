@@ -614,6 +614,100 @@ function downloadJSON(data, name) {
     URL.revokeObjectURL(url);
 }
 
+// ===== Exportar / Importar Respuestas =====
+
+async function exportAllResponses() {
+    try {
+        const res = await fetch('/api/responses');
+        const { responses } = await res.json();
+        downloadJSON(responses, 'respuestas');
+    } catch (e) {
+        console.error('Error exportando:', e);
+        alert('Error al exportar respuestas');
+    }
+}
+
+async function importResponsesFromFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    try {
+        const text = await file.text();
+        const imported = JSON.parse(text);
+
+        if (!Array.isArray(imported)) {
+            alert('El archivo debe contener un array JSON de respuestas.');
+            input.value = '';
+            return;
+        }
+
+        // Validar estructura basica
+        const invalid = imported.filter(r => !r.name || !r.response_text);
+        if (invalid.length > 0) {
+            alert(`${invalid.length} respuesta(s) no tienen "name" o "response_text". Revisa el formato.`);
+            input.value = '';
+            return;
+        }
+
+        const mode = prompt(
+            `Se encontraron ${imported.length} respuestas en el archivo.\n\n` +
+            'Escribe "reemplazar" para sustituir TODAS las respuestas actuales,\n' +
+            'o "agregar" para agregar estas respuestas a las existentes:'
+        );
+
+        if (!mode) { input.value = ''; return; }
+
+        let finalResponses;
+        if (mode.toLowerCase().trim() === 'reemplazar') {
+            // Asignar IDs nuevos si no tienen
+            finalResponses = imported.map((r, i) => ({
+                ...r,
+                id: r.id || Date.now() + i,
+                is_active: r.is_active !== false,
+                priority: r.priority || 1,
+                use_count: r.use_count || 0,
+                success_rate: r.success_rate || 0,
+                follow_ups: r.follow_ups || []
+            }));
+        } else if (mode.toLowerCase().trim() === 'agregar') {
+            const res = await fetch('/api/responses');
+            const { responses: existing } = await res.json();
+            const newOnes = imported.map((r, i) => ({
+                ...r,
+                id: r.id || Date.now() + i,
+                is_active: r.is_active !== false,
+                priority: r.priority || 1,
+                use_count: r.use_count || 0,
+                success_rate: r.success_rate || 0,
+                follow_ups: r.follow_ups || []
+            }));
+            finalResponses = [...existing, ...newOnes];
+        } else {
+            alert('Opcion no valida. Usa "reemplazar" o "agregar".');
+            input.value = '';
+            return;
+        }
+
+        const saveRes = await fetch('/api/save-responses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ responses: finalResponses })
+        });
+
+        if (saveRes.ok) {
+            alert(`Importacion exitosa: ${finalResponses.length} respuestas guardadas.`);
+            loadResponses();
+        } else {
+            alert('Error al guardar las respuestas importadas.');
+        }
+    } catch (e) {
+        console.error('Error importando:', e);
+        alert('Error al leer el archivo. Verifica que sea JSON valido.');
+    }
+
+    input.value = '';
+}
+
 // Escapar HTML
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -1953,6 +2047,7 @@ async function deleteIntegration(id) {
 let currentFollowUps = [];
 
 function addFollowUpStep() {
+    collectFollowUps();
     const step = currentFollowUps.length + 1;
     currentFollowUps.push({
         step,
@@ -1963,29 +2058,41 @@ function addFollowUpStep() {
         default_response: '',
         condition: ''
     });
-    renderFollowUpEditor();
+    renderFollowUpEditorNoCollect();
 }
 
 function removeFollowUpStep(idx) {
+    collectFollowUps();
     currentFollowUps.splice(idx, 1);
-    // Renumerar steps
     currentFollowUps.forEach((f, i) => f.step = i + 1);
-    renderFollowUpEditor();
+    renderFollowUpEditorNoCollect();
 }
 
 function addOptionToStep(stepIdx) {
+    // Recoger valores del DOM ANTES de agregar la nueva opcion
+    collectFollowUps();
     currentFollowUps[stepIdx].options.push('');
-    renderFollowUpEditor();
+    renderFollowUpEditorNoCollect();
 }
 
 function removeOptionFromStep(stepIdx, optIdx) {
+    collectFollowUps();
     const step = currentFollowUps[stepIdx];
     const removed = step.options.splice(optIdx, 1)[0];
-    if (removed && step.response_map) delete step.response_map[removed.toLowerCase().trim()];
-    renderFollowUpEditor();
+    if (removed && step.response_map) {
+        const key = removed.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        delete step.response_map[key];
+    }
+    renderFollowUpEditorNoCollect();
 }
 
 function renderFollowUpEditor() {
+    // Recoger valores actuales del DOM antes de re-renderizar
+    collectFollowUps();
+    renderFollowUpEditorNoCollect();
+}
+
+function renderFollowUpEditorNoCollect() {
     const container = document.getElementById('follow-ups-container');
     if (!container) return;
 
@@ -1993,9 +2100,6 @@ function renderFollowUpEditor() {
         container.innerHTML = '<div class="text-muted small py-2">Sin follow-ups — la conversación termina con la respuesta inicial.</div>';
         return;
     }
-
-    // Recoger valores actuales del DOM antes de re-renderizar
-    collectFollowUps();
 
     container.innerHTML = currentFollowUps.map((fu, idx) => {
         const prevOptions = idx > 0 ? currentFollowUps[idx - 1].options.filter(o => o.trim()) : [];
@@ -2064,8 +2168,9 @@ function collectFollowUps() {
             if (!optEl) break;
             const optVal = optEl.value.trim();
             const respVal = respEl ? respEl.value.trim() : '';
+            // Siempre preservar la opcion (incluso vacia) para no perder filas
+            newOptions.push(optVal);
             if (optVal) {
-                newOptions.push(optVal);
                 const key = optVal.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
                 newResponseMap[key] = respVal;
                 newTriggers.push(key);
@@ -2076,7 +2181,8 @@ function collectFollowUps() {
         fu.options = newOptions.length ? newOptions : [''];
         fu.response_map = newResponseMap;
         fu.trigger_words = newTriggers.join(',');
-        fu.question = newOptions.length ? '¿' + newOptions.join(', ') + '?' : '';
+        const filledOptions = newOptions.filter(o => o);
+        fu.question = filledOptions.length ? '¿' + filledOptions.join(', ') + '?' : '';
     });
 }
 

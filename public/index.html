@@ -525,13 +525,20 @@
             <div class="tab-pane fade" id="responses">
                 <h2 class="mb-4"><i class="bi bi-reply me-2"></i> Control de Respuestas</h2>
                 
-                <div class="mb-4">
+                <div class="mb-4 d-flex flex-wrap gap-2">
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addResponseModal">
                         <i class="bi bi-plus-circle me-2"></i> Agregar Respuesta
                     </button>
-                    <button class="btn btn-outline-primary ms-2" onclick="loadResponses()">
+                    <button class="btn btn-outline-primary" onclick="loadResponses()">
                         <i class="bi bi-arrow-clockwise me-2"></i> Actualizar
                     </button>
+                    <button class="btn btn-outline-secondary" onclick="exportAllResponses()">
+                        <i class="bi bi-download me-2"></i> Exportar JSON
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="document.getElementById('import-responses-file').click()">
+                        <i class="bi bi-upload me-2"></i> Importar JSON
+                    </button>
+                    <input type="file" id="import-responses-file" accept=".json" style="display:none" onchange="importResponsesFromFile(this)">
                 </div>
 
                 <div id="responses-list">
