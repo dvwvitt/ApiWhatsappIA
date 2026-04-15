@@ -22,8 +22,11 @@ const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const CONV_STATES_FILE = path.join(DATA_DIR, 'conversation-states.json');
 const ADVISORS_FILE = path.join(DATA_DIR, 'advisors.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const QUEUE_FILE = path.join(DATA_DIR, 'queue.json');
 const STATE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutos
 const SESSION_INACTIVITY_MS = 120 * 1000; // 120 segundos
+const QUEUE_DELAY_MS = 5 * 60 * 1000; // 5 minutos para mensaje de demora
+const TRANSFER_KEYWORDS = ['asesor', 'humano', 'persona', 'hablar con alguien', 'agente', 'representante'];
 
 // ===== Estado de conversación por número =====
 function loadConversationStates() {
@@ -121,6 +124,156 @@ function getAdvisorForClient(clientPhone) {
     return loadAdvisors().find(a => a.phone === session.advisor_phone);
   }
   return null;
+}
+
+// ===== Cola de espera =====
+function loadQueue() {
+  try {
+    if (fs.existsSync(QUEUE_FILE)) {
+      return JSON.parse(fs.readFileSync(QUEUE_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error leyendo queue.json:', e.message);
+  }
+  return [];
+}
+
+function saveQueue(queue) {
+  const tmpFile = QUEUE_FILE + '.tmp';
+  fs.writeFileSync(tmpFile, JSON.stringify(queue, null, 2), 'utf8');
+  fs.renameSync(tmpFile, QUEUE_FILE);
+}
+
+function addToQueue(clientPhone, clientName, clientData) {
+  const queue = loadQueue();
+  // No agregar duplicados
+  if (queue.some(q => q.client_phone === clientPhone && q.status === 'waiting')) {
+    return null;
+  }
+  const entry = {
+    id: 'queue_' + Date.now(),
+    client_phone: clientPhone,
+    client_name: clientName,
+    client_data: clientData,
+    queued_at: new Date().toISOString(),
+    wait_message_sent: true,
+    delay_message_sent: false,
+    assigned_at: null,
+    status: 'waiting'
+  };
+  queue.push(entry);
+  saveQueue(queue);
+  console.log(`📋 Cliente ${clientPhone} agregado a cola de espera`);
+  return entry;
+}
+
+// ===== Asignación Round-Robin equitativa =====
+function assignAdvisorRoundRobin() {
+  const advisors = loadAdvisors();
+  const sessions = loadSessions();
+
+  // Solo disponibles (is_active AND is_available)
+  const available = advisors.filter(a => a.is_active && a.is_available);
+  if (available.length === 0) return null;
+
+  // Filtrar los que NO tienen sesión activa
+  const activeSessions = sessions.filter(s => s.status === 'active');
+  const busyPhones = activeSessions.map(s => s.advisor_phone);
+  const free = available.filter(a => !busyPhones.includes(a.phone));
+  if (free.length === 0) return null;
+
+  // Round-robin: elegir el que tiene menos sesiones totales
+  free.sort((a, b) => (a.total_sessions || 0) - (b.total_sessions || 0));
+  return free[0];
+}
+
+// Procesar cola — asignar primer cliente en espera si hay asesor
+function processQueue() {
+  const queue = loadQueue();
+  const waiting = queue.filter(q => q.status === 'waiting');
+  if (waiting.length === 0) return;
+
+  const advisor = assignAdvisorRoundRobin();
+  if (!advisor) return;
+
+  // Asignar primer cliente en cola
+  const entry = waiting[0];
+  entry.status = 'assigned';
+  entry.assigned_at = new Date().toISOString();
+  saveQueue(queue);
+
+  // Crear sesión
+  createSessionFromQueue(entry, advisor);
+}
+
+function createSessionFromQueue(queueEntry, advisor) {
+  const sessionId = 'session_' + Date.now();
+  const newSession = {
+    id: sessionId,
+    advisor_phone: advisor.phone,
+    advisor_name: advisor.name,
+    client_phone: queueEntry.client_phone,
+    client_data: queueEntry.client_data,
+    status: 'active',
+    started_at: new Date().toISOString(),
+    ended_at: null,
+    ended_by: null,
+    last_client_activity: new Date().toISOString(),
+    last_advisor_message_at: null,
+    inactivity_notified: false,
+    first_response_ms: null,
+    messages_count: 0,
+    advisor_messages: 0,
+    client_messages: 0
+  };
+
+  const sessions = loadSessions();
+  sessions.push(newSession);
+  saveSessions(sessions);
+
+  // Incrementar total_sessions del asesor
+  const advisors = loadAdvisors();
+  const idx = advisors.findIndex(a => a.phone === advisor.phone);
+  if (idx !== -1) {
+    advisors[idx].total_sessions = (advisors[idx].total_sessions || 0) + 1;
+    saveAdvisors(advisors);
+  }
+
+  // Notificar asesor
+  const cd = queueEntry.client_data;
+  const advisorMsg = `🔔 *Nueva sesión asignada*\n\n👤 *Cliente:* ${cd.nombre || 'N/A'}\n🪪 *Identificación:* ${cd.identificacion || 'N/A'}\n❓ *Consulta:* ${cd.pregunta || 'N/A'}\n📱 *Teléfono:* ${queueEntry.client_phone}\n\nResponde directamente a este chat. Escribe */terminar* para cerrar la sesión.`;
+  sendAutoReply(advisor.phone, advisorMsg).catch(e => console.error('Error notificando asesor:', e.message));
+
+  // Notificar cliente
+  sendAutoReply(queueEntry.client_phone, `✅ Te hemos conectado con ${advisor.name}. Ya puedes escribir tu mensaje.`).catch(e =>
+    console.error('Error notificando cliente:', e.message)
+  );
+
+  console.log(`✅ Sesión ${sessionId} creada desde cola: ${queueEntry.client_phone} → ${advisor.name}`);
+}
+
+// Revisar timeouts de cola — enviar mensaje de demora a los 5 min
+function checkQueueTimeouts() {
+  const queue = loadQueue();
+  const now = Date.now();
+  let changed = false;
+
+  queue.forEach(entry => {
+    if (entry.status !== 'waiting') return;
+    const waitTime = now - new Date(entry.queued_at).getTime();
+
+    if (waitTime >= QUEUE_DELAY_MS && !entry.delay_message_sent) {
+      entry.delay_message_sent = true;
+      changed = true;
+      sendAutoReply(
+        entry.client_phone,
+        'La espera está siendo más larga de lo normal. Un asesor se comunicará contigo en cuanto esté disponible. ¡Gracias por tu paciencia!'
+      ).catch(e => console.error('Error enviando msg demora:', e.message));
+      console.log(`⏰ Mensaje de demora enviado a ${entry.client_phone}`);
+    }
+  });
+
+  if (changed) saveQueue(queue);
 }
 
 function persistMessage(record) {
@@ -337,7 +490,20 @@ async function analyzeMessage(text, profileName, from) {
     return await handleDataCollection(text, profileName, from);
   }
 
-  // 4. Si hay flujo multi-paso activo — procesar follow-up
+  // 4. Palabras clave de transferencia a humano
+  const lowerText = text.toLowerCase();
+  if (TRANSFER_KEYWORDS.some(kw => lowerText.includes(kw))) {
+    startDataCollection(from, profileName);
+    return {
+      intent: 'transfer_requested',
+      action: 'auto_response',
+      response: 'Te voy a conectar con un asesor. Primero necesito algunos datos. ¿Cuál es tu nombre completo?',
+      sendAutoReply: true,
+      confidence: 0.9
+    };
+  }
+
+  // 5. Si hay flujo multi-paso activo — procesar follow-up
   const flowResult = handleFollowUpFlow(text, profileName, from);
   if (flowResult) return flowResult;
 
@@ -501,8 +667,18 @@ function handleAdvisorMessage(text, from) {
   const updatedSessions = loadSessions();
   const idx = updatedSessions.findIndex(s => s.id === activeSession.id);
   if (idx !== -1) {
-    updatedSessions[idx].last_advisor_message_at = new Date().toISOString();
+    const now = new Date().toISOString();
+    updatedSessions[idx].last_advisor_message_at = now;
     updatedSessions[idx].inactivity_notified = false;
+    updatedSessions[idx].messages_count = (updatedSessions[idx].messages_count || 0) + 1;
+    updatedSessions[idx].advisor_messages = (updatedSessions[idx].advisor_messages || 0) + 1;
+
+    // Calcular first_response_ms si es la primera respuesta del asesor
+    if (!updatedSessions[idx].first_response_ms && updatedSessions[idx].started_at) {
+      const startTime = new Date(updatedSessions[idx].started_at).getTime();
+      updatedSessions[idx].first_response_ms = Date.now() - startTime;
+    }
+
     saveSessions(updatedSessions);
   }
 
@@ -522,11 +698,13 @@ function handleClientInSession(text, profileName, from) {
 
   if (!session) return null;
 
-  // Actualizar timestamps y resetear flag de inactividad
+  // Actualizar timestamps, métricas y resetear flag de inactividad
   const idx = sessions.findIndex(s => s.id === session.id);
   if (idx !== -1) {
     sessions[idx].last_client_activity = new Date().toISOString();
     sessions[idx].inactivity_notified = false;
+    sessions[idx].messages_count = (sessions[idx].messages_count || 0) + 1;
+    sessions[idx].client_messages = (sessions[idx].client_messages || 0) + 1;
     saveSessions(sessions);
   }
 
@@ -547,11 +725,9 @@ function handleClientInSession(text, profileName, from) {
 // ===== Recolección de datos del cliente =====
 async function handleDataCollection(text, profileName, from) {
   const state = getConversationState(from);
-  const STEPS = ['nombre', 'correo', 'telefono', 'identificacion', 'pregunta'];
+  const STEPS = ['nombre', 'identificacion', 'pregunta'];
   const PROMPTS = {
     nombre: '¿Cuál es tu nombre completo?',
-    correo: '¿Cuál es tu correo electrónico?',
-    telefono: '¿Cuál es tu número de teléfono?',
     identificacion: '¿Cuál es tu número de identificación?',
     pregunta: '¿Cuál es tu pregunta o consulta?'
   };
@@ -563,7 +739,6 @@ async function handleDataCollection(text, profileName, from) {
   const nextIdx = currentIdx + 1;
 
   if (nextIdx < STEPS.length) {
-    // Hay más pasos
     const nextStep = STEPS[nextIdx];
     setConversationState(from, {
       type: 'data_collection',
@@ -579,58 +754,41 @@ async function handleDataCollection(text, profileName, from) {
     };
   }
 
-  // Todos los datos recolectados — asignar asesor
-  const advisors = loadAdvisors().filter(a => a.is_active);
-  if (advisors.length === 0) {
-    clearConversationState(from);
+  // Todos los datos recolectados — intentar asignación round-robin
+  const clientData = {
+    nombre: state.collected['nombre'],
+    identificacion: state.collected['identificacion'],
+    pregunta: state.collected['pregunta']
+  };
+
+  clearConversationState(from);
+
+  const advisor = assignAdvisorRoundRobin();
+
+  if (!advisor) {
+    // No hay asesores disponibles — agregar a cola
+    addToQueue(from, clientData.nombre, clientData);
     return {
-      intent: 'no_advisors',
+      intent: 'queued',
       action: 'auto_response',
-      response: 'No hay asesores disponibles en este momento. Te contactaremos pronto.',
+      response: 'Todos nuestros asesores están ocupados en este momento. En breve serás atendido. ¡Gracias por tu paciencia!',
       sendAutoReply: true,
       confidence: 0.8
     };
   }
 
-  // Crear sesión con primer asesor disponible
-  const advisor = advisors[0];
-  const sessionId = 'session_' + Date.now();
-  const clientData = {
-    nombre: state.collected['nombre'],
-    correo: state.collected['correo'],
-    telefono: state.collected['telefono'],
-    identificacion: state.collected['identificacion'],
-    pregunta: state.collected['pregunta']
-  };
-
-  const newSession = {
-    id: sessionId,
-    advisor_phone: advisor.phone,
-    advisor_name: advisor.name,
+  // Crear sesión directa con asesor disponible
+  const queueEntry = {
     client_phone: from,
-    client_data: clientData,
-    status: 'active',
-    started_at: new Date().toISOString(),
-    ended_at: null,
-    ended_by: null,
-    last_client_activity: new Date().toISOString(),
-    last_advisor_message_at: new Date().toISOString(),
-    inactivity_notified: false
+    client_name: clientData.nombre,
+    client_data: clientData
   };
+  createSessionFromQueue(queueEntry, advisor);
 
-  const sessions = loadSessions();
-  sessions.push(newSession);
-  saveSessions(sessions);
-
-  // Notificar al asesor
-  const advisorMsg = `🔔 *Nueva sesión iniciada*\n\n👤 *Cliente:* ${clientData.nombre}\n📧 *Correo:* ${clientData.correo}\n📱 *Teléfono:* ${clientData.telefono}\n🪪 *Identificación:* ${clientData.identificacion}\n❓ *Consulta:* ${clientData.pregunta}\n\nResponde directamente a este chat. Escribe */terminar* para cerrar la sesión.`;
-  sendAutoReply(advisor.phone, advisorMsg).catch(e => console.error('Error notificando asesor:', e.message));
-
-  clearConversationState(from);
   return {
     intent: 'session_created',
     action: 'auto_response',
-    response: '✅ Conectando con un asesor. Por favor espera...',
+    response: `✅ Te hemos conectado con ${advisor.name}. Ya puedes escribir tu mensaje.`,
     sendAutoReply: true,
     confidence: 0.9
   };
@@ -652,12 +810,33 @@ function endSession(sessionId, reason) {
   if (idx === -1) return;
 
   const session = sessions[idx];
+  const endedAt = new Date().toISOString();
   sessions[idx] = {
     ...session,
     status: 'completed',
-    ended_at: new Date().toISOString(),
+    ended_at: endedAt,
     ended_by: reason
   };
+
+  // Calcular y actualizar métricas del asesor
+  const durationMs = new Date(endedAt).getTime() - new Date(session.started_at).getTime();
+  const advisors = loadAdvisors();
+  const advIdx = advisors.findIndex(a => a.phone === session.advisor_phone);
+  if (advIdx !== -1) {
+    const adv = advisors[advIdx];
+    const totalSessions = adv.total_sessions || 1;
+    // Promedio móvil de duración
+    adv.avg_session_duration_ms = Math.round(
+      ((adv.avg_session_duration_ms || 0) * (totalSessions - 1) + durationMs) / totalSessions
+    );
+    // Promedio móvil de tiempo de primera respuesta
+    if (session.first_response_ms) {
+      adv.avg_response_time_ms = Math.round(
+        ((adv.avg_response_time_ms || 0) * (totalSessions - 1) + session.first_response_ms) / totalSessions
+      );
+    }
+    saveAdvisors(advisors);
+  }
 
   // Notificar cliente
   sendAutoReply(session.client_phone, 'La sesión con el asesor ha finalizado. ¡Gracias por contactarnos!').catch(e =>
@@ -674,6 +853,9 @@ function endSession(sessionId, reason) {
   saveSessions(sessions);
   clearConversationState(session.advisor_phone);
   console.log(`✅ Sesión ${sessionId} finalizada (${reason})`);
+
+  // Intentar asignar siguiente cliente en cola
+  processQueue();
 }
 
 // ===== Flujo multi-paso: procesar follow-ups activos =====
@@ -911,6 +1093,10 @@ setInterval(() => {
       endSession(s.id, 'timeout');
     }
   });
+
+  // Procesar cola de espera y verificar timeouts
+  processQueue();
+  checkQueueTimeouts();
 }, 30000);
 
 // Iniciar servidor

@@ -615,6 +615,7 @@ app.get('/api/ngrok/log', (req, res) => {
 const CONV_STATES_FILE = path.join(DATA_DIR, 'conversation-states.json');
 const ADVISORS_FILE = path.join(DATA_DIR, 'advisors.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const QUEUE_FILE = path.join(DATA_DIR, 'queue.json');
 
 function loadConvStates() {
     try {
@@ -653,6 +654,21 @@ function saveSessions(sessions) {
     const tmpFile = SESSIONS_FILE + '.tmp';
     fs.writeFileSync(tmpFile, JSON.stringify(sessions, null, 2), 'utf8');
     fs.renameSync(tmpFile, SESSIONS_FILE);
+}
+
+function loadQueue() {
+    try {
+        if (fs.existsSync(QUEUE_FILE)) {
+            return JSON.parse(fs.readFileSync(QUEUE_FILE, 'utf8'));
+        }
+    } catch {}
+    return [];
+}
+
+function saveQueue(queue) {
+    const tmpFile = QUEUE_FILE + '.tmp';
+    fs.writeFileSync(tmpFile, JSON.stringify(queue, null, 2), 'utf8');
+    fs.renameSync(tmpFile, QUEUE_FILE);
 }
 
 // GET /api/conversation-states — estados activos de flujos
@@ -968,6 +984,11 @@ app.post('/api/advisors', (req, res) => {
         phone,
         roles: roles || [],
         is_active: is_active !== false,
+        is_available: false,
+        last_available_at: null,
+        total_sessions: 0,
+        avg_response_time_ms: 0,
+        avg_session_duration_ms: 0,
         created_at: new Date().toISOString()
     };
 
@@ -978,7 +999,7 @@ app.post('/api/advisors', (req, res) => {
 
 // PUT /api/advisors/:id
 app.put('/api/advisors/:id', (req, res) => {
-    const { name, phone, roles, is_active } = req.body;
+    const { name, phone, roles, is_active, is_available } = req.body;
     const advisors = loadAdvisors();
     const idx = advisors.findIndex(a => String(a.id) === String(req.params.id));
 
@@ -986,7 +1007,17 @@ app.put('/api/advisors/:id', (req, res) => {
         return res.status(404).json({ error: 'Asesor no encontrado' });
     }
 
-    Object.assign(advisors[idx], { name, phone, roles, is_active });
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (phone !== undefined) updates.phone = phone;
+    if (roles !== undefined) updates.roles = roles;
+    if (is_active !== undefined) updates.is_active = is_active;
+    if (is_available !== undefined) {
+        updates.is_available = is_available;
+        if (is_available) updates.last_available_at = new Date().toISOString();
+    }
+
+    Object.assign(advisors[idx], updates);
     saveAdvisors(advisors);
     res.json({ success: true, advisor: advisors[idx] });
 });
@@ -1047,6 +1078,166 @@ app.delete('/api/sessions/:id', (req, res) => {
     saveSessions(sessions);
     res.json({ success: true });
 });
+
+// ==================== ADVISOR AVAILABILITY & QUEUE ====================
+
+// POST /api/advisors/:id/availability — Toggle disponibilidad
+app.post('/api/advisors/:id/availability', (req, res) => {
+    const { is_available } = req.body;
+    if (typeof is_available !== 'boolean') {
+        return res.status(400).json({ error: 'is_available (boolean) requerido' });
+    }
+
+    const advisors = loadAdvisors();
+    const idx = advisors.findIndex(a => String(a.id) === String(req.params.id));
+    if (idx === -1) {
+        return res.status(404).json({ error: 'Asesor no encontrado' });
+    }
+
+    advisors[idx].is_available = is_available;
+    if (is_available) {
+        advisors[idx].last_available_at = new Date().toISOString();
+    }
+    saveAdvisors(advisors);
+
+    res.json({ success: true, advisor: advisors[idx] });
+});
+
+// GET /api/advisors/metrics — Métricas de todos los asesores
+app.get('/api/advisors/metrics', (req, res) => {
+    const advisors = loadAdvisors();
+    const sessions = loadSessions();
+    const today = new Date().toISOString().split('T')[0];
+
+    const metrics = advisors.map(a => {
+        const advisorSessions = sessions.filter(s => s.advisor_phone === a.phone);
+        const activeSessions = advisorSessions.filter(s => s.status === 'active');
+        const todaySessions = advisorSessions.filter(s =>
+            s.started_at && s.started_at.startsWith(today)
+        );
+        const completedSessions = advisorSessions.filter(s => s.status === 'completed');
+
+        // Calcular promedio de first_response_ms de sesiones completadas
+        const responseTimes = completedSessions
+            .filter(s => s.first_response_ms)
+            .map(s => s.first_response_ms);
+        const avgResponseMs = responseTimes.length > 0
+            ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+            : 0;
+
+        // Calcular promedio de duración de sesiones completadas
+        const durations = completedSessions
+            .filter(s => s.started_at && s.ended_at)
+            .map(s => new Date(s.ended_at).getTime() - new Date(s.started_at).getTime());
+        const avgDurationMs = durations.length > 0
+            ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+            : 0;
+
+        return {
+            id: a.id,
+            name: a.name,
+            phone: a.phone,
+            is_active: a.is_active,
+            is_available: a.is_available,
+            total_sessions: a.total_sessions || advisorSessions.length,
+            sessions_today: todaySessions.length,
+            active_session: activeSessions.length > 0 ? activeSessions[0] : null,
+            avg_response_time_ms: avgResponseMs || a.avg_response_time_ms || 0,
+            avg_session_duration_ms: avgDurationMs || a.avg_session_duration_ms || 0,
+            total_messages: advisorSessions.reduce((sum, s) => sum + (s.advisor_messages || 0), 0)
+        };
+    });
+
+    res.json({ metrics });
+});
+
+// GET /api/queue — Clientes en cola de espera
+app.get('/api/queue', (req, res) => {
+    const queue = loadQueue();
+    const now = Date.now();
+
+    const enriched = queue.map(q => ({
+        ...q,
+        wait_time_ms: now - new Date(q.queued_at).getTime(),
+        wait_time_formatted: formatDuration(now - new Date(q.queued_at).getTime())
+    }));
+
+    res.json({
+        queue: enriched,
+        total_waiting: enriched.filter(q => q.status === 'waiting').length
+    });
+});
+
+// POST /api/queue/:id/assign — Asignar manualmente cliente de cola a un asesor
+app.post('/api/queue/:id/assign', (req, res) => {
+    const { advisor_id } = req.body;
+    if (!advisor_id) {
+        return res.status(400).json({ error: 'advisor_id requerido' });
+    }
+
+    const queue = loadQueue();
+    const qIdx = queue.findIndex(q => q.id === req.params.id && q.status === 'waiting');
+    if (qIdx === -1) {
+        return res.status(404).json({ error: 'Cliente no encontrado en cola o ya asignado' });
+    }
+
+    const advisors = loadAdvisors();
+    const advisor = advisors.find(a => String(a.id) === String(advisor_id));
+    if (!advisor) {
+        return res.status(404).json({ error: 'Asesor no encontrado' });
+    }
+
+    // Crear sesión
+    const sessionId = 'session_' + Date.now();
+    const queueEntry = queue[qIdx];
+    const newSession = {
+        id: sessionId,
+        advisor_phone: advisor.phone,
+        advisor_name: advisor.name,
+        client_phone: queueEntry.client_phone,
+        client_name: queueEntry.client_name || '',
+        client_data: queueEntry.client_data || null,
+        status: 'active',
+        started_at: new Date().toISOString(),
+        ended_at: null,
+        ended_by: null,
+        last_client_activity: new Date().toISOString(),
+        last_advisor_message_at: null,
+        inactivity_notified: false,
+        first_response_ms: null,
+        messages_count: 0,
+        advisor_messages: 0,
+        client_messages: 0,
+        conversation_history: []
+    };
+
+    const sessions = loadSessions();
+    sessions.push(newSession);
+    saveSessions(sessions);
+
+    // Actualizar cola
+    queue[qIdx].status = 'assigned';
+    queue[qIdx].assigned_at = new Date().toISOString();
+    saveQueue(queue);
+
+    // Incrementar total_sessions del asesor
+    const aIdx = advisors.findIndex(a => String(a.id) === String(advisor_id));
+    if (aIdx !== -1) {
+        advisors[aIdx].total_sessions = (advisors[aIdx].total_sessions || 0) + 1;
+        saveAdvisors(advisors);
+    }
+
+    res.json({ success: true, session: newSession });
+});
+
+function formatDuration(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+    return `${seconds}s`;
+}
 
 // ==================== SYSTEM CONTROL ====================
 

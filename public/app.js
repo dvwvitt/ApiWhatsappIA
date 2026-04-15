@@ -38,7 +38,7 @@ function setupEventListeners() {
             if (target === '#training') loadTrainingPanel();
             if (target === '#tunnel') { loadTunnelStatus(); loadTunnelLog(); }
             if (target === '#ai-management') loadAIManagement();
-            if (target === '#advisors') { loadAdvisors(); loadActiveSessions(); loadSessionHistory(); }
+            if (target === '#advisors') { loadAdvisors(); loadActiveSessions(); loadSessionHistory(); loadQueue(); loadAdvisorMetrics(); }
         });
     });
     
@@ -2091,14 +2091,14 @@ async function loadAdvisors() {
     } catch (e) {
         console.error('Error cargando asesores:', e);
         document.getElementById('advisors-table-body').innerHTML =
-            '<tr><td colspan="5" class="text-center text-danger py-4">Error cargando asesores</td></tr>';
+            '<tr><td colspan="6" class="text-center text-danger py-4">Error cargando asesores</td></tr>';
     }
 }
 
 function renderAdvisorsTable(advisors) {
     const tbody = document.getElementById('advisors-table-body');
     if (advisors.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Sin asesores registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Sin asesores registrados</td></tr>';
         return;
     }
 
@@ -2111,6 +2111,16 @@ function renderAdvisorsTable(advisors) {
                 <span class="badge ${a.is_active ? 'bg-success' : 'bg-secondary'}">
                     ${a.is_active ? 'Activo' : 'Inactivo'}
                 </span>
+            </td>
+            <td>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch"
+                           id="avail-${a.id}" ${a.is_available ? 'checked' : ''}
+                           onchange="toggleAvailability(${a.id}, this.checked)">
+                    <label class="badge ${a.is_available ? 'bg-success' : 'bg-secondary'}" for="avail-${a.id}" id="avail-label-${a.id}">
+                        ${a.is_available ? 'Disponible' : 'No disponible'}
+                    </label>
+                </div>
             </td>
             <td>
                 <button class="btn btn-sm btn-outline-primary" onclick="editAdvisor(${a.id})">
@@ -2276,6 +2286,171 @@ async function forceEndSession(sessionId) {
     } catch (e) {
         console.error('Error:', e);
     }
+}
+
+// ==================== DISPONIBILIDAD, COLA Y METRICAS ====================
+
+async function toggleAvailability(advisorId, isAvailable) {
+    try {
+        const res = await fetch(`/api/advisors/${advisorId}/availability`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_available: isAvailable })
+        });
+        if (res.ok) {
+            const label = document.getElementById(`avail-label-${advisorId}`);
+            if (label) {
+                label.textContent = isAvailable ? 'Disponible' : 'No disponible';
+                label.className = `badge ${isAvailable ? 'bg-success' : 'bg-secondary'}`;
+            }
+            // Recargar cola por si se asigno alguien automaticamente
+            loadQueue();
+        } else {
+            alert('Error cambiando disponibilidad');
+            // Revertir checkbox
+            const cb = document.getElementById(`avail-${advisorId}`);
+            if (cb) cb.checked = !isAvailable;
+        }
+    } catch (e) {
+        console.error('Error:', e);
+    }
+}
+
+async function loadQueue() {
+    try {
+        const res = await fetch('/api/queue');
+        const data = await res.json();
+        const waiting = data.queue.filter(q => q.status === 'waiting');
+        const badge = document.getElementById('queue-count-badge');
+        if (badge) badge.textContent = waiting.length;
+        renderQueue(waiting);
+    } catch (e) {
+        console.error('Error cargando cola:', e);
+    }
+}
+
+function renderQueue(queue) {
+    const tbody = document.getElementById('queue-table-body');
+    if (!tbody) return;
+    if (queue.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Sin clientes en espera</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = queue.map(q => `
+        <tr>
+            <td class="ps-3"><code>${q.client_phone}</code></td>
+            <td>${q.client_name || '—'}</td>
+            <td><small>${q.client_data?.pregunta || '—'}</small></td>
+            <td><span class="badge bg-warning text-dark">${q.wait_time_formatted || '—'}</span></td>
+            <td><span class="badge ${q.delay_message_sent ? 'bg-danger' : 'bg-info'}">${q.delay_message_sent ? 'Esperando mucho' : 'En espera'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-success" onclick="manualAssignFromQueue('${q.id}')" title="Asignar manualmente">
+                    <i class="bi bi-person-plus"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function manualAssignFromQueue(queueId) {
+    // Obtener asesores disponibles
+    try {
+        const res = await fetch('/api/advisors');
+        const { advisors } = await res.json();
+        const available = advisors.filter(a => a.is_active);
+
+        if (available.length === 0) {
+            alert('No hay asesores activos');
+            return;
+        }
+
+        const options = available.map(a => `${a.id}: ${a.name} (${a.is_available ? 'Disponible' : 'No disponible'})`).join('\n');
+        const selection = prompt(`Selecciona el ID del asesor:\n\n${options}`);
+        if (!selection) return;
+
+        const advisorId = selection.split(':')[0].trim();
+        const assignRes = await fetch(`/api/queue/${queueId}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ advisor_id: advisorId })
+        });
+
+        if (assignRes.ok) {
+            loadQueue();
+            loadActiveSessions();
+        } else {
+            const err = await assignRes.json();
+            alert('Error: ' + (err.error || 'No se pudo asignar'));
+        }
+    } catch (e) {
+        console.error('Error:', e);
+    }
+}
+
+async function loadAdvisorMetrics() {
+    try {
+        const res = await fetch('/api/advisors/metrics');
+        const { metrics } = await res.json();
+        renderAdvisorMetrics(metrics);
+    } catch (e) {
+        console.error('Error cargando metricas:', e);
+    }
+}
+
+function renderAdvisorMetrics(metrics) {
+    const container = document.getElementById('advisor-metrics-container');
+    if (!container) return;
+    if (metrics.length === 0) {
+        container.innerHTML = '<div class="col-12 text-center text-muted py-4">Sin asesores</div>';
+        return;
+    }
+
+    container.innerHTML = metrics.map(m => {
+        const avgRespSec = m.avg_response_time_ms > 0 ? Math.round(m.avg_response_time_ms / 1000) : 0;
+        const avgDurMin = m.avg_session_duration_ms > 0 ? Math.round(m.avg_session_duration_ms / 60000) : 0;
+        const statusClass = m.is_available ? 'border-success' : 'border-secondary';
+        const statusText = m.is_available ? 'Disponible' : 'No disponible';
+        const statusBadge = m.is_available ? 'bg-success' : 'bg-secondary';
+
+        return `
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card ${statusClass}" style="border-left: 4px solid">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">${m.name}</h6>
+                        <span class="badge ${statusBadge}">${statusText}</span>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fw-bold text-primary">${m.sessions_today}</div>
+                            <small class="text-muted">Hoy</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-info">${m.total_sessions}</div>
+                            <small class="text-muted">Total</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-warning">${m.total_messages}</div>
+                            <small class="text-muted">Msgs</small>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <small class="text-muted">Resp. promedio</small>
+                            <div class="fw-bold">${avgRespSec > 0 ? avgRespSec + 's' : '—'}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Dur. promedio</small>
+                            <div class="fw-bold">${avgDurMin > 0 ? avgDurMin + ' min' : '—'}</div>
+                        </div>
+                    </div>
+                    ${m.active_session ? `<div class="mt-2"><small class="text-success"><i class="bi bi-chat-dots"></i> En sesion con ${m.active_session.client_data?.nombre || 'cliente'}</small></div>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 // ==================== SISTEMA ====================

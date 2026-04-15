@@ -11,6 +11,11 @@
       "general"
     ],
     "is_active": true,
+    "is_available": false,
+    "last_available_at": null,
+    "total_sessions": 0,
+    "avg_response_time_ms": 0,
+    "avg_session_duration_ms": 0,
     "created_at": "2026-04-15T04:35:35.913Z"
   }
 ]
