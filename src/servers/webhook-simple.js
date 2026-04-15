@@ -920,7 +920,7 @@ app.listen(PORT, () => {
   console.log(`📊 Historial: http://localhost:${PORT}/history`);
   console.log(`📈 Análisis: http://localhost:${PORT}/analysis`);
   console.log(`\n🎯 Listo para recibir mensajes de WhatsApp Business!`);
-  console.log(`💡 Envía un mensaje a +573123080083 para probar`);
+  console.log(`💡 Envía un mensaje a tu numero de WhatsApp Business para probar`);
 });
 
 // Manejar cierre

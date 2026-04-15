@@ -22,7 +22,7 @@ http://localhost:3002/index.html
 
 ### 3. Probar con WhatsApp
 
-Envia un mensaje al numero **+573123080083** desde cualquier WhatsApp.
+Envia un mensaje al numero de tu WhatsApp Business (configurado en `.env`) desde cualquier WhatsApp.
 
 Mensajes de prueba:
 - "Hola" - Respuesta de saludo

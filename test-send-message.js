@@ -16,7 +16,7 @@ async function sendTestMessage() {
         const payload = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
-            to: '573123031988',  // Tu número
+            to: process.env.WHATSAPP_TEST_NUMBER || '573123456789',  // Reemplaza con tu numero
             type: 'text',
             text: {
                 body: '✅ ¡Prueba exitosa! El sistema WhatsApp Business está funcionando correctamente.'
