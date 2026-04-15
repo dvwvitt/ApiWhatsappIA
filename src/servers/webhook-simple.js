@@ -362,32 +362,39 @@ app.post('/webhook/whatsapp-incoming', async (req, res) => {
   
   // Extraer datos
   const from = message.from || 'desconocido';
-  const text = message.text?.body || '';
+  const msgType = message.type || 'text';
+  const text = message.text?.body || message.media?.caption || '';
   const messageId = message.id || '';
   const timestamp = message.timestamp || '';
   const profileName = contact.profile?.name || 'Cliente';
-  
+
+  // Extraer info de media si existe
+  const media = message.media || null;
+  const isMedia = ['image', 'video', 'audio', 'document', 'sticker'].includes(msgType);
+
   console.log(`👤 De: ${from} (${profileName})`);
-  console.log(`📝 Mensaje: "${text}"`);
+  console.log(`📝 Mensaje: ${isMedia ? `[${msgType}${media?.mime_type ? ' ' + media.mime_type : ''}]` : `"${text}"`}`);
   console.log(`🆔 ID: ${messageId}`);
   console.log(`🕐 Timestamp: ${new Date(timestamp * 1000).toISOString()}`);
-  
+
   // Guardar en historial
   const messageRecord = {
     id: messageId,
     from,
     text,
     profileName,
+    msgType,
+    media,
     timestamp: new Date(timestamp * 1000).toISOString(),
     receivedAt: new Date().toISOString(),
     raw: message
   };
-  
+
   messageHistory.push(messageRecord);
   if (messageHistory.length > MAX_HISTORY) messageHistory.shift();
-  
-  // Analizar intención (con from para flujos multi-paso)
-  const analysis = await analyzeMessage(text, profileName, from);
+
+  // Analizar intención (con from para flujos multi-paso, media para relay)
+  const analysis = await analyzeMessage(text, profileName, from, { isMedia, media, msgType });
   console.log(`🎯 Intención detectada: ${analysis.intent}`);
   console.log(`💡 Acción sugerida: ${analysis.action}`);
   console.log(`💬 Respuesta sugerida: "${analysis.response}"`);
@@ -397,7 +404,9 @@ app.post('/webhook/whatsapp-incoming', async (req, res) => {
     id: Date.now(),
     message_id: messageId,
     from_number: from,
-    text: text,
+    text: text || (isMedia ? `[${msgType}]` : ''),
+    media_type: isMedia ? msgType : null,
+    media_id: media?.id || null,
     timestamp: new Date(timestamp * 1000).toISOString(),
     intent: analysis.intent,
     response_sent: analysis.sendAutoReply ? analysis.response : null,
@@ -476,26 +485,48 @@ function normalize(str) {
 }
 
 // Función para analizar mensaje — máquina de estados para asesores
-async function analyzeMessage(text, profileName, from) {
-  // 1. Si es asesor — manejar comandos y relay
+async function analyzeMessage(text, profileName, from, mediaInfo = {}) {
+  const { isMedia, media, msgType } = mediaInfo;
+
+  // 1. Si es asesor — manejar comandos y relay (incluye media)
   if (isAdvisor(from)) {
+    const activeSession = loadSessions().find(s => s.status === 'active' && s.advisor_phone === from);
+    // Si tiene sesion activa y envia media → relay al cliente
+    if (activeSession && isMedia && media) {
+      return handleMediaRelay(from, activeSession.client_phone, media, msgType, 'advisor');
+    }
     const advisorResult = handleAdvisorMessage(text, from);
     if (advisorResult) return advisorResult;
   }
 
-  // 2. Si tiene sesión activa de cliente — relay al asesor
+  // 2. Si tiene sesión activa de cliente — relay al asesor (incluye media)
   const session = getActiveSession(from);
   if (session && session.client_phone === from) {
+    if (isMedia && media) {
+      return handleMediaRelay(from, session.advisor_phone, media, msgType, 'client', profileName);
+    }
     return handleClientInSession(text, profileName, from);
   }
 
-  // 3. Si está en recolección de datos — continuar con el flujo
+  // 3. Si es media pero NO tiene sesion activa → rechazar
+  if (isMedia) {
+    const mediaNames = { image: 'imágenes', video: 'videos', audio: 'audios', document: 'archivos', sticker: 'stickers' };
+    return {
+      intent: 'media_rejected',
+      action: 'auto_response',
+      response: `No puedo procesar ${mediaNames[msgType] || 'este tipo de archivo'}. Si necesitas enviar ${mediaNames[msgType] || 'archivos'}, primero solicita hablar con un asesor escribiendo *"asesor"* y cuando estés conectado podrás enviar todo tipo de archivos.`,
+      sendAutoReply: true,
+      confidence: 0.9
+    };
+  }
+
+  // 4. Si está en recolección de datos — continuar con el flujo
   const state = getConversationState(from);
   if (state && state.type === 'data_collection') {
     return await handleDataCollection(text, profileName, from);
   }
 
-  // 4. Palabras clave de transferencia a humano
+  // 5. Palabras clave de transferencia a humano
   const lowerText = text.toLowerCase();
   if (TRANSFER_KEYWORDS.some(kw => lowerText.includes(kw))) {
     startDataCollection(from, profileName);
@@ -729,6 +760,69 @@ function handleAdvisorMessage(text, from) {
 
   return {
     intent: 'advisor_relay',
+    action: 'relay',
+    response: null,
+    sendAutoReply: false,
+    confidence: 1
+  };
+}
+
+// ===== Relay de media en sesión =====
+async function sendMediaRelay(to, mediaType, mediaId, caption, filename) {
+  try {
+    const response = await axios.post('http://localhost:3000/send-media', {
+      to,
+      media_type: mediaType,
+      media_id: mediaId,
+      caption: caption || '',
+      filename: filename || ''
+    }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000
+    });
+    return { success: true, responseData: response.data };
+  } catch (error) {
+    console.error('❌ Error enviando media relay:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+function handleMediaRelay(senderPhone, recipientPhone, media, msgType, senderRole, profileName) {
+  const mediaNames = { image: 'imagen', video: 'video', audio: 'audio', document: 'documento', sticker: 'sticker' };
+
+  // Construir caption con prefijo si es del cliente
+  let caption = media.caption || '';
+  if (senderRole === 'client' && profileName) {
+    caption = caption ? `[Cliente ${profileName}]: ${caption}` : `[Cliente ${profileName}] envió ${mediaNames[msgType] || 'archivo'}`;
+  }
+
+  // Enviar media al destinatario
+  sendMediaRelay(recipientPhone, msgType, media.id, caption, media.filename)
+    .then(r => console.log(`📎 Media relay ${senderRole}→${senderRole === 'client' ? 'asesor' : 'cliente'}: ${r.success ? 'OK' : 'FALLO - ' + r.error}`))
+    .catch(e => console.error('❌ Error en media relay:', e.message));
+
+  // Actualizar métricas de sesión
+  const sessions = loadSessions();
+  const session = sessions.find(s => s.status === 'active' &&
+    (s.client_phone === senderPhone || s.advisor_phone === senderPhone));
+  if (session) {
+    const idx = sessions.findIndex(s => s.id === session.id);
+    if (idx !== -1) {
+      sessions[idx].messages_count = (sessions[idx].messages_count || 0) + 1;
+      if (senderRole === 'client') {
+        sessions[idx].client_messages = (sessions[idx].client_messages || 0) + 1;
+        sessions[idx].last_client_activity = new Date().toISOString();
+      } else {
+        sessions[idx].advisor_messages = (sessions[idx].advisor_messages || 0) + 1;
+        sessions[idx].last_advisor_message_at = new Date().toISOString();
+        sessions[idx].inactivity_notified = false;
+      }
+      saveSessions(sessions);
+    }
+  }
+
+  return {
+    intent: 'media_relay',
     action: 'relay',
     response: null,
     sendAutoReply: false,

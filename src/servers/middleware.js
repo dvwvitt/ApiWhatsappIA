@@ -136,12 +136,31 @@ async function processWhatsAppMessage(messageData) {
     }
     
     const from = message.from; // Número del remitente
-    const text = message.text?.body || '';
     const messageId = message.id;
     const timestamp = message.timestamp;
-    
-    logger.info(`Mensaje recibido de ${from}: ${text.substring(0, 50)}...`);
-    
+    const msgType = message.type || 'text';
+
+    // Extraer texto o info de media segun tipo
+    let text = '';
+    let media = null;
+
+    if (msgType === 'text') {
+      text = message.text?.body || '';
+    } else if (['image', 'video', 'audio', 'document', 'sticker'].includes(msgType)) {
+      const mediaObj = message[msgType];
+      media = {
+        type: msgType,
+        id: mediaObj?.id,
+        mime_type: mediaObj?.mime_type,
+        caption: mediaObj?.caption || '',
+        filename: mediaObj?.filename || ''
+      };
+      text = mediaObj?.caption || '';
+      logger.info(`Media recibida: ${msgType} (${media.mime_type}) de ${from}`);
+    }
+
+    logger.info(`Mensaje recibido de ${from}: ${text ? text.substring(0, 50) + '...' : `[${msgType}]`}`);
+
     // Enviar a OpenClaw
     await forwardToOpenClaw({
       from,
@@ -149,6 +168,8 @@ async function processWhatsAppMessage(messageData) {
       messageId,
       timestamp,
       platform: 'whatsapp_business',
+      msgType,
+      media,
       rawMessage: message
     });
     
@@ -239,15 +260,27 @@ async function sendToN8N(message) {
     const controlPanelUrl = 'http://localhost:5678/webhook/whatsapp-incoming';
     
     // Formato para el Panel de Control
+    const msgPayload = {
+      from: message.from,
+      id: message.messageId,
+      timestamp: Math.floor(new Date(message.timestamp).getTime() / 1000),
+      text: { body: message.text },
+      type: message.msgType || 'text'
+    };
+
+    // Agregar info de media si existe
+    if (message.media) {
+      msgPayload.media = message.media;
+      if (message.media.type === 'image') msgPayload.image = { id: message.media.id, mime_type: message.media.mime_type, caption: message.media.caption };
+      if (message.media.type === 'video') msgPayload.video = { id: message.media.id, mime_type: message.media.mime_type, caption: message.media.caption };
+      if (message.media.type === 'audio') msgPayload.audio = { id: message.media.id, mime_type: message.media.mime_type };
+      if (message.media.type === 'document') msgPayload.document = { id: message.media.id, mime_type: message.media.mime_type, filename: message.media.filename };
+      if (message.media.type === 'sticker') msgPayload.sticker = { id: message.media.id, mime_type: message.media.mime_type };
+    }
+
     const payload = {
       messageData: {
-        messages: [{
-          from: message.from,
-          id: message.messageId,
-          timestamp: Math.floor(new Date(message.timestamp).getTime() / 1000),
-          text: { body: message.text },
-          type: 'text'
-        }],
+        messages: [msgPayload],
         contacts: [{
           profile: { name: 'Cliente' },
           wa_id: message.from
@@ -331,6 +364,61 @@ app.post('/send-message', async (req, res) => {
     
   } catch (error) {
     logger.error('Error en endpoint /send-message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reenviar media por ID (el media_id de WhatsApp se puede reusar para enviar)
+async function sendMediaToWhatsApp(to, mediaType, mediaId, caption, filename) {
+  try {
+    logger.info(`Enviando media a WhatsApp: ${to} -> ${mediaType} (${mediaId})`);
+
+    const url = `${WHATSAPP_CONFIG.apiBaseUrl}/${WHATSAPP_CONFIG.phoneNumberId}/messages`;
+
+    const mediaPayload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: to,
+      type: mediaType
+    };
+
+    // Construir el objeto de media segun tipo
+    const mediaObj = { id: mediaId };
+    if (caption) mediaObj.caption = caption;
+    if (mediaType === 'document' && filename) mediaObj.filename = filename;
+
+    mediaPayload[mediaType] = mediaObj;
+
+    const response = await axios.post(url, mediaPayload, {
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_CONFIG.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    logger.info('Media enviada a WhatsApp exitosamente', { messageId: response.data?.messages?.[0]?.id });
+    return response.data;
+
+  } catch (error) {
+    logger.error('Error enviando media a WhatsApp:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+// Endpoint para reenviar media (usado por webhook-simple para relay)
+app.post('/send-media', async (req, res) => {
+  try {
+    const { to, media_type, media_id, caption, filename } = req.body;
+
+    if (!to || !media_type || !media_id) {
+      return res.status(400).json({ error: 'Faltan parámetros: to, media_type y media_id son requeridos' });
+    }
+
+    const result = await sendMediaToWhatsApp(to, media_type, media_id, caption, filename);
+    res.json({ success: true, result });
+
+  } catch (error) {
+    logger.error('Error en endpoint /send-media:', error);
     res.status(500).json({ error: error.message });
   }
 });
