@@ -2,7 +2,7 @@
   {
     "id": 1,
     "name": "Saludo Inicial",
-    "response_text": "¡Hola! Soy el asistente de Relojería Milla de Oro. ¿En qué puedo ayudarte?",
+    "response_text": "¡Hola! Soy el asistente de tu negocio. ¿En qué puedo ayudarte?",
     "intent": "saludo",
     "trigger_words": "hola,buenos,buenas",
     "is_active": true,
@@ -62,8 +62,8 @@
         "response_map": {
           "analogico": "¿De qué marca es tu reloj analógico?",
           "analogo": "¿De qué marca es tu reloj analógico?",
-          "digital": "Para relojes digitales el cambio cuesta $12.000. ¿Deseas agendar cita?",
-          "smartwatch": "Para smartwatch necesitamos revisar el modelo. ¿Puedes traerlo a nuestra tienda en CC Milla de Oro?"
+          "digital": "Para relojes digitales el cambio cuesta [PRECIO]. ¿Deseas agendar cita?",
+          "smartwatch": "Para smartwatch necesitamos revisar el modelo. ¿Puedes traerlo a nuestra tienda en [UBICACIÓN]?"
         },
         "default_response": "No entendí. ¿Es Analógico, Digital o Smartwatch?"
       },
@@ -74,10 +74,10 @@
         "options": ["Casio", "Citizen", "Seiko", "Otro"],
         "trigger_words": "casio,citizen,seiko,otro",
         "response_map": {
-          "casio": "Batería para Casio analógico: $10.000. ¿Deseas agendar cita? Estamos en CC Milla de Oro.",
-          "citizen": "Batería para Citizen analógico: $15.000. ¿Deseas agendar cita? Estamos en CC Milla de Oro.",
-          "seiko": "Batería para Seiko analógico: $15.000. ¿Deseas agendar cita? Estamos en CC Milla de Oro.",
-          "otro": "Trae tu reloj y lo revisamos sin costo. Estamos en CC Milla de Oro."
+          "casio": "Batería para Casio analógico: [PRECIO]. ¿Deseas agendar cita? Puedes visitarnos en [UBICACIÓN].",
+          "citizen": "Batería para Citizen analógico: [PRECIO]. ¿Deseas agendar cita? Puedes visitarnos en [UBICACIÓN].",
+          "seiko": "Batería para Seiko analógico: [PRECIO]. ¿Deseas agendar cita? Puedes visitarnos en [UBICACIÓN].",
+          "otro": "Trae tu reloj y lo revisamos sin costo. Puedes visitarnos en [UBICACIÓN]."
         },
         "default_response": "No identifiqué la marca. ¿Casio, Citizen, Seiko u Otro?"
       }
@@ -99,7 +99,7 @@
     "name": "Ubicación",
     "intent": "ubicacion",
     "trigger_words": "dónde están,ubicación,dirección,dónde se encuentran,lugar,cómo llegar, ubicados",
-    "response_text": "Estamos ubicados en el Centro Comercial Milla de Oro. ¿Necesitas indicaciones?",
+    "response_text": "Estamos ubicados en [UBICACIÓN]. ¿Necesitas indicaciones?",
     "is_active": true,
     "priority": 1,
     "use_count": 0,
