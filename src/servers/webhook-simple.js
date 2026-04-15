@@ -202,11 +202,11 @@ function processQueue() {
   entry.assigned_at = new Date().toISOString();
   saveQueue(queue);
 
-  // Crear sesión
-  createSessionFromQueue(entry, advisor);
+  // Crear sesión y notificar cliente (viene de cola)
+  createSessionFromQueue(entry, advisor, true);
 }
 
-function createSessionFromQueue(queueEntry, advisor) {
+function createSessionFromQueue(queueEntry, advisor, notifyClient = false) {
   const sessionId = 'session_' + Date.now();
   const newSession = {
     id: sessionId,
@@ -240,16 +240,21 @@ function createSessionFromQueue(queueEntry, advisor) {
   }
 
   // Notificar asesor
-  const cd = queueEntry.client_data;
+  const cd = queueEntry.client_data || {};
   const advisorMsg = `🔔 *Nueva sesión asignada*\n\n👤 *Cliente:* ${cd.nombre || 'N/A'}\n🪪 *Identificación:* ${cd.identificacion || 'N/A'}\n❓ *Consulta:* ${cd.pregunta || 'N/A'}\n📱 *Teléfono:* ${queueEntry.client_phone}\n\nResponde directamente a este chat. Escribe */terminar* para cerrar la sesión.`;
-  sendAutoReply(advisor.phone, advisorMsg).catch(e => console.error('Error notificando asesor:', e.message));
+  console.log(`📤 Enviando notificación al asesor ${advisor.name} (${advisor.phone})...`);
+  sendAutoReply(advisor.phone, advisorMsg)
+    .then(r => console.log(`📤 Notificación al asesor: ${r.success ? 'OK' : 'FALLO - ' + r.error}`))
+    .catch(e => console.error('❌ Error notificando asesor:', e.message));
 
-  // Notificar cliente
-  sendAutoReply(queueEntry.client_phone, `✅ Te hemos conectado con ${advisor.name}. Ya puedes escribir tu mensaje.`).catch(e =>
-    console.error('Error notificando cliente:', e.message)
-  );
+  // Notificar cliente solo cuando viene de la cola (no del data collection directo)
+  if (notifyClient) {
+    sendAutoReply(queueEntry.client_phone, `✅ Te hemos conectado con ${advisor.name}. Ya puedes escribir tu mensaje.`).catch(e =>
+      console.error('❌ Error notificando cliente:', e.message)
+    );
+  }
 
-  console.log(`✅ Sesión ${sessionId} creada desde cola: ${queueEntry.client_phone} → ${advisor.name}`);
+  console.log(`✅ Sesión ${sessionId} creada: ${queueEntry.client_phone} → ${advisor.name} (${advisor.phone})`);
 }
 
 // Revisar timeouts de cola — enviar mensaje de demora a los 5 min
