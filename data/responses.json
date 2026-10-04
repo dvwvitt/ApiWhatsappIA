@@ -2,44 +2,26 @@
   {
     "id": 1,
     "name": "Saludo Inicial",
-    "response_text": "¡Hola! Soy el asistente de tu negocio. ¿En qué puedo ayudarte?",
     "intent": "saludo",
     "trigger_words": "hola,buenos,buenas",
+    "response_text": "¡Hola! Soy el asistente de RELOJERÍA MILLA DE ORO. ¿En qué puedo ayudarte?",
     "is_active": true,
     "priority": 1,
+    "ai_context": "",
+    "follow_ups": [],
     "use_count": 4,
-    "success_rate": 100
-  },
-  {
-    "id": 2,
-    "name": "Saludo Amigable",
-    "response_text": "¡Hola! ¿Cómo estás? Estoy aquí para ayudarte con lo que necesites.",
-    "intent": "saludo",
-    "trigger_words": "qué tal,cómo estás,saludos,buen día",
-    "is_active": true,
-    "priority": 2,
-    "use_count": 0,
     "success_rate": 100
   },
   {
     "id": 3,
     "name": "Despedida Básica",
-    "response_text": "¡Gracias por contactarnos! Que tengas un excelente día.",
     "intent": "despedida",
-    "trigger_words": "adiós,gracias,chao,hasta luego,nos vemos,bye",
+    "trigger_words": "adiós,gracias,chao,hasta luego,nos vemos,bye, muchas gracias,hasta pronto, gracias.",
+    "response_text": "¡Gracias por contactarnos! Que tengas un excelente día.",
     "is_active": true,
     "priority": 1,
-    "use_count": 0,
-    "success_rate": 100
-  },
-  {
-    "id": 4,
-    "name": "Despedida Amable",
-    "intent": "despedida",
-    "trigger_words": "muchas gracias,hasta pronto, gracias.",
-    "response_text": "Fue un gusto ayudarte. ¡Vuelve cuando necesites!",
-    "is_active": true,
-    "priority": 2,
+    "ai_context": "",
+    "follow_ups": [],
     "use_count": 0,
     "success_rate": 100
   },
@@ -51,37 +33,10 @@
     "response_text": "Claro, cambiamos baterías para todo tipo de relojes. ¿Qué tipo de reloj tienes?",
     "is_active": true,
     "priority": 1,
+    "ai_context": "cambiamos todo tipos de bateria con precios de baterias japonesas y suizas de alto rendimiento de marca murata desde $15.000 hasta $80.000 dependiendo de la referencia y calidad.",
+    "follow_ups": [],
     "use_count": 0,
-    "success_rate": 100,
-    "follow_ups": [
-      {
-        "step": 1,
-        "question": "¿Qué tipo de reloj?",
-        "options": ["Analógico", "Digital", "Smartwatch"],
-        "trigger_words": "analogico,analogo,digital,smartwatch",
-        "response_map": {
-          "analogico": "¿De qué marca es tu reloj analógico?",
-          "analogo": "¿De qué marca es tu reloj analógico?",
-          "digital": "Para relojes digitales el cambio cuesta [PRECIO]. ¿Deseas agendar cita?",
-          "smartwatch": "Para smartwatch necesitamos revisar el modelo. ¿Puedes traerlo a nuestra tienda en [UBICACIÓN]?"
-        },
-        "default_response": "No entendí. ¿Es Analógico, Digital o Smartwatch?"
-      },
-      {
-        "step": 2,
-        "condition": "analogico",
-        "question": "¿De qué marca?",
-        "options": ["Casio", "Citizen", "Seiko", "Otro"],
-        "trigger_words": "casio,citizen,seiko,otro",
-        "response_map": {
-          "casio": "Batería para Casio analógico: [PRECIO]. ¿Deseas agendar cita? Puedes visitarnos en [UBICACIÓN].",
-          "citizen": "Batería para Citizen analógico: [PRECIO]. ¿Deseas agendar cita? Puedes visitarnos en [UBICACIÓN].",
-          "seiko": "Batería para Seiko analógico: [PRECIO]. ¿Deseas agendar cita? Puedes visitarnos en [UBICACIÓN].",
-          "otro": "Trae tu reloj y lo revisamos sin costo. Puedes visitarnos en [UBICACIÓN]."
-        },
-        "default_response": "No identifiqué la marca. ¿Casio, Citizen, Seiko u Otro?"
-      }
-    ]
+    "success_rate": 100
   },
   {
     "id": 6,
@@ -99,9 +54,11 @@
     "name": "Ubicación",
     "intent": "ubicacion",
     "trigger_words": "dónde están,ubicación,dirección,dónde se encuentran,lugar,cómo llegar, ubicados",
-    "response_text": "Estamos ubicados en [UBICACIÓN]. ¿Necesitas indicaciones?",
+    "response_text": "Estamos ubicados en el Centro Comercial OVIEDO, Carrera 43a # 6 Sur 15 Local 99102. Sótano 1 al lado de carulla. dentro del centro comercial.",
     "is_active": true,
     "priority": 1,
+    "ai_context": "Estamos ubicados en el Centro Comercial OVIEDO, Carrera 43a # 6 Sur 15 Local 99102. Sótano 1 al lado de carulla. dentro del centro comercial.",
+    "follow_ups": [],
     "use_count": 0,
     "success_rate": 100
   },
@@ -119,57 +76,65 @@
   {
     "id": 11,
     "name": "Servicios Ofrecidos",
-    "response_text": "Ofrecemos cambio de baterías, reparación de relojes, mantenimiento, pulseras/correas, y valoración de joyas. ¿Cuál te interesa?",
     "intent": "servicios",
     "trigger_words": "qué servicios,hacen,reparan,qué hacen,servicios disponibles",
+    "response_text": "Ofrecemos cambio de todo tipo de baterías, suizas y japonesas, mantenimiento a relojes de toda clase, como de batería, automáticos de cuerda. les realizamos servicio a todas las marcas, rolex, cartier, omega, hublot, tissot, technomarine, orient, guess, fossil. diesel, casio, longines, concord, tudor, citizen y demas marcas.",
     "is_active": true,
     "priority": 1,
+    "ai_context": "reparamos todas las marcas se debe preguntar qué reloj tiene y decirle sin importar la marca que si tenemos la bateria y si les realizamos servicios de mantenimiento, y reparaciones de toda clase.",
+    "follow_ups": [
+      {
+        "step": 1,
+        "question": "",
+        "options": [
+          ""
+        ],
+        "trigger_words": "",
+        "response_map": {},
+        "default_response": "",
+        "condition": ""
+      }
+    ],
     "use_count": 0,
     "success_rate": 100
   },
   {
     "id": 12,
     "name": "Compra de Relojes",
-    "response_text": "Sí compramos. Envíanos la marca y modelo, adjunta una foto.",
     "intent": "consulta",
     "trigger_words": "compra,compraventa,empeñar,empeñan,vender reloj",
+    "response_text": "Sí compramos. te vamos a transferir con un asesor.",
     "is_active": true,
     "priority": 1,
+    "ai_context": "si compramos relojes y es muy importante pasarle el chat a modo sesión con prioridad alta por encima de cualquier otra consulta que esté en lista de espera, para que un asesor concrete el negocio lo más rápido posible. repito desbes pasar el chat a modo sesión con una asesor lo mas rapido posible cuando cualquier cliente quiera vender un reloj.",
+    "follow_ups": [],
     "use_count": 0,
     "success_rate": 100
   },
   {
     "id": 13,
     "name": "No Identificado",
-    "response_text": "Entendido. Un especialista te contactará en breve para ayudarte.",
     "intent": "no_identificado",
     "trigger_words": "",
+    "response_text": "Entendido. Un especialista te contactará en breve para ayudarte.",
     "is_active": true,
     "priority": 99,
-    "use_count": 0,
-    "success_rate": 100
-  },
-  {
-    "id": 1776067136015,
-    "name": "compra de relojes",
-    "intent": "consulta",
-    "trigger_words": "compra, compraventa,",
-    "response_text": "si compramos relojes, envía la marca, el modelo y cunato estas dispuesto a recibir por tu reloj",
-    "is_active": true,
-    "priority": 1,
+    "ai_context": "cuando se envíe este mensaje se debe cambiar el chat a modo sesión inmediatamente. para que el asesor se pueda comunicar.",
+    "follow_ups": [],
     "use_count": 0,
     "success_rate": 100
   },
   {
     "id": 1776220707077,
-    "name": "Horarios unificados",
+    "name": "Horarios",
     "intent": "horarios",
     "trigger_words": "hora,abren,horario,cuándo abren,cuándo cierran,horas de atención,horarios,horario de atención,horas de trabajo,cuándo están disponibles,abierto,abre,cierra,atención",
     "response_text": "Nuestro horario de atención es de lunes a viernes de 9:00 am a 7:00 pm, y sábados de 9:00 am a 6:00 pm. Los domingos y festivos no hay servicio.",
     "is_active": true,
-    "priority": 50,
+    "priority": 1,
+    "ai_context": "Nuestro horario de atención es de lunes a viernes de 9:00 am a 7:00 pm, y sábados de 9:00 am a 6:00 pm. Los domingos y festivos no hay servicio.",
+    "follow_ups": [],
     "use_count": 0,
-    "success_rate": 0,
-    "action": "edit"
+    "success_rate": 100
   }
 ]
